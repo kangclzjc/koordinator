@@ -121,6 +121,10 @@ build-koord-descheduler: ## Build koord-descheduler binary.
 build-koord-runtime-proxy: ## Build koord-runtime-proxy binary.
 	go build -o bin/koord-runtime-proxy cmd/koord-runtime-proxy/main.go
 
+.PHONY: build-koord-runtime-proxy-nri
+build-koord-runtime-proxy-nri: ## Build koord-runtime-proxy binary.
+	go build -o bin/koord-runtime-proxy cmd/koord-runtime-proxy-nri/main.go
+
 .PHONY: docker-build
 docker-build: test docker-build-koordlet docker-build-koord-manager docker-build-koord-scheduler docker-build-koord-descheduler
 
