@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/containerd/nri/pkg/api"
 	"github.com/containerd/nri/pkg/stub"
-	runtimeapi "github.com/koordinator-sh/koordinator/apis/runtime/v1alpha1"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/protocol"
 	rmconfig "github.com/koordinator-sh/koordinator/pkg/runtimeproxy/config"
@@ -120,19 +119,13 @@ func (p *nriServer) Shutdown() {
 }
 
 func (p *nriServer) RunPodSandbox(pod *api.PodSandbox) error {
-	resp := &runtimeapi.PodSandboxHookResponse{
-		Labels:       pod.GetLabels(),
-		Annotations:  pod.GetAnnotations(),
-		CgroupParent: pod.Linux.CgroupParent,
-		Resources:    &runtimeapi.LinuxContainerResources{},
-	}
 	podCtx := &protocol.PodContext{}
 	podCtx.FromNri(pod)
 	err := hooks.RunHooks(p.options.PluginFailurePolicy, rmconfig.PreRunPodSandbox, podCtx)
 	if err != nil {
 		klog.Errorf("hooks run error: %v", err)
 	}
-	podCtx.NriDone(resp)
+	podCtx.NriDone()
 	return nil
 }
 
@@ -153,7 +146,6 @@ func (p *nriServer) CreateContainer(pod *api.PodSandbox, container *api.Containe
 	if err != nil {
 		klog.Errorf("run hooks error: %v", err)
 	}
-	//containerCtx.ProxyDone(resp)
 
 	adjust := &api.ContainerAdjustment{}
 	if containerCtx.Response.Resources.CPUSet != nil {
@@ -202,7 +194,6 @@ func (p *nriServer) UpdateContainer(pod *api.PodSandbox, container *api.Containe
 	if err != nil {
 		klog.Errorf("run hooks error: %v", err)
 	}
-	//containerCtx.ProxyDone(resp)
 
 	update := &api.ContainerUpdate{}
 	if containerCtx.Response.Resources.CPUSet != nil {

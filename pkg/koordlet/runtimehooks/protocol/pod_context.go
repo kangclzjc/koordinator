@@ -71,9 +71,8 @@ func (p *PodRequest) FromNri(od *api.PodSandbox) {
 
 }
 
-func (p *PodContext) NriDone(resp *runtimeapi.PodSandboxHookResponse) {
+func (p *PodContext) NriDone() {
 	p.injectForExt()
-	p.Response.ProxyDone(resp)
 }
 
 func (p *PodRequest) FromProxy(req *runtimeapi.PodSandboxHookRequest) {
