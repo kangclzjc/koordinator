@@ -84,6 +84,9 @@ func NewRuntimeHook(si statesinformer.StatesInformer, cfg *Config) (RuntimeHook,
 		DisableStages:       getDisableStagesMap(cfg.RuntimeHookDisableStages),
 		Executor:            e,
 	}
+
+	nris := proxyserver.NewNriServer()
+	nris.Setup()
 	s, err := proxyserver.NewServer(newServerOptions)
 	newReconcilerOptions := reconciler.Options{
 		StatesInformer: si,

@@ -1,9 +1,14 @@
 package proxyserver
 
 import (
+	"context"
 	"fmt"
 	"github.com/containerd/nri/pkg/api"
 	"github.com/containerd/nri/pkg/stub"
+	runtimeapi "github.com/koordinator-sh/koordinator/apis/runtime/v1alpha1"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/protocol"
+	rmconfig "github.com/koordinator-sh/koordinator/pkg/runtimeproxy/config"
 	"k8s.io/klog/v2"
 	"log"
 	"os"
@@ -31,14 +36,34 @@ type nriconfig struct {
 }
 
 type nriServer struct {
-	stub stub.Stub
-	mask stub.EventMask
+	stub    stub.Stub
+	mask    stub.EventMask
+	options Options // server options
 }
 
-func (s *nriServer) Setup() error {
+func NewNriServer() *nriServer {
 	opts = append(opts, stub.WithPluginName(pluginName))
 	if pluginIdx != "" {
 		opts = append(opts, stub.WithPluginIdx(pluginIdx))
+	}
+	p := &nriServer{}
+	if p.mask, err = api.ParseEventMask(events); err != nil {
+		log.Fatalf("failed to parse events: %v", err)
+	}
+	cfg.Events = strings.Split(events, ",")
+
+	if p.stub, err = stub.New(p, append(opts, stub.WithOnClose(p.onClose))...); err != nil {
+		log.Fatalf("failed to create plugin stub: %v", err)
+	}
+
+	return p
+}
+
+func (s *nriServer) Setup() error {
+	err = s.stub.Run(context.Background())
+	if err != nil {
+		klog.Errorf("plugin exited with error %v", err)
+		os.Exit(1)
 	}
 	return nil
 }
@@ -95,8 +120,19 @@ func (p *nriServer) Shutdown() {
 }
 
 func (p *nriServer) RunPodSandbox(pod *api.PodSandbox) error {
-	pod.Annotations["key"] = "kkkkkkkkkkkkkkkkkkkk"
-	dump("RunPodSandbox", "pod", pod)
+	resp := &runtimeapi.PodSandboxHookResponse{
+		Labels:       pod.GetLabels(),
+		Annotations:  pod.GetAnnotations(),
+		CgroupParent: pod.Linux.CgroupParent,
+		Resources:    &runtimeapi.LinuxContainerResources{},
+	}
+	podCtx := &protocol.PodContext{}
+	podCtx.FromNri(pod)
+	err := hooks.RunHooks(p.options.PluginFailurePolicy, rmconfig.PreRunPodSandbox, podCtx)
+	if err != nil {
+		klog.Errorf("hooks run error: %v", err)
+	}
+	podCtx.NriDone(resp)
 	return nil
 }
 
@@ -111,25 +147,36 @@ func (p *nriServer) RemovePodSandbox(pod *api.PodSandbox) error {
 }
 
 func (p *nriServer) CreateContainer(pod *api.PodSandbox, container *api.Container) (*api.ContainerAdjustment, []*api.ContainerUpdate, error) {
-	dump("CreateContainer", "pod", pod, "container", container)
+	containerCtx := &protocol.ContainerContext{}
+	containerCtx.FromNri(pod, container)
+	err := hooks.RunHooks(p.options.PluginFailurePolicy, rmconfig.PreCreateContainer, containerCtx)
+	if err != nil {
+		klog.Errorf("run hooks error: %v", err)
+	}
+	//containerCtx.ProxyDone(resp)
 
 	adjust := &api.ContainerAdjustment{}
-
-	if cfg.AddAnnotation != "" {
-		adjust.AddAnnotation(cfg.AddAnnotation, fmt.Sprintf("logger-pid-%d", os.Getpid()))
-	}
-	if cfg.SetAnnotation != "" {
-		adjust.RemoveAnnotation(cfg.SetAnnotation)
-		adjust.AddAnnotation(cfg.SetAnnotation, fmt.Sprintf("logger-pid-%d", os.Getpid()))
-	}
-	if cfg.AddEnv != "" {
-		adjust.AddEnv(cfg.AddEnv, fmt.Sprintf("logger-pid-%d", os.Getpid()))
-	}
-	if cfg.SetEnv != "" {
-		adjust.RemoveEnv(cfg.SetEnv)
-		adjust.AddEnv(cfg.SetEnv, fmt.Sprintf("logger-pid-%d", os.Getpid()))
+	if containerCtx.Response.Resources.CPUSet != nil {
+		adjust.SetLinuxCPUSetCPUs(*containerCtx.Response.Resources.CPUSet)
 	}
 
+	if containerCtx.Response.Resources.CFSQuota != nil {
+		adjust.SetLinuxCPUQuota(*containerCtx.Response.Resources.CFSQuota)
+	}
+
+	if containerCtx.Response.Resources.CPUShares != nil {
+		adjust.SetLinuxCPUShares(uint64(*containerCtx.Response.Resources.CPUShares))
+	}
+
+	if containerCtx.Response.Resources.MemoryLimit != nil {
+		adjust.SetLinuxMemoryLimit(*containerCtx.Response.Resources.MemoryLimit)
+	}
+
+	if containerCtx.Response.AddContainerEnvs != nil {
+		for k, v := range containerCtx.Response.AddContainerEnvs {
+			adjust.AddEnv(k, v)
+		}
+	}
 	return adjust, nil, nil
 }
 
@@ -149,8 +196,32 @@ func (p *nriServer) PostStartContainer(pod *api.PodSandbox, container *api.Conta
 }
 
 func (p *nriServer) UpdateContainer(pod *api.PodSandbox, container *api.Container) ([]*api.ContainerUpdate, error) {
-	dump("UpdateContainer", "pod", pod, "container", container)
-	return nil, nil
+	containerCtx := &protocol.ContainerContext{}
+	containerCtx.FromNri(pod, container)
+	err := hooks.RunHooks(p.options.PluginFailurePolicy, rmconfig.PreCreateContainer, containerCtx)
+	if err != nil {
+		klog.Errorf("run hooks error: %v", err)
+	}
+	//containerCtx.ProxyDone(resp)
+
+	update := &api.ContainerUpdate{}
+	if containerCtx.Response.Resources.CPUSet != nil {
+		update.SetLinuxCPUSetCPUs(*containerCtx.Response.Resources.CPUSet)
+	}
+
+	if containerCtx.Response.Resources.CFSQuota != nil {
+		update.SetLinuxCPUQuota(*containerCtx.Response.Resources.CFSQuota)
+	}
+
+	if containerCtx.Response.Resources.CPUShares != nil {
+		update.SetLinuxCPUShares(uint64(*containerCtx.Response.Resources.CPUShares))
+	}
+
+	if containerCtx.Response.Resources.MemoryLimit != nil {
+		update.SetLinuxMemoryLimit(*containerCtx.Response.Resources.MemoryLimit)
+	}
+
+	return []*api.ContainerUpdate{update}, nil
 }
 
 func (p *nriServer) PostUpdateContainer(pod *api.PodSandbox, container *api.Container) error {

@@ -18,6 +18,7 @@ package protocol
 
 import (
 	"fmt"
+	"github.com/containerd/nri/pkg/api"
 
 	"k8s.io/klog/v2"
 
@@ -51,6 +52,10 @@ type ContainerRequest struct {
 	CgroupParent      string
 	ContainerEnvs     map[string]string
 	ExtendedResources *apiext.ExtendedResourceContainerSpec
+}
+
+func (c *ContainerRequest) FromNri(pod *api.PodSandbox, container *api.Container) {
+
 }
 
 func (c *ContainerRequest) FromProxy(req *runtimeapi.ContainerResourceHookRequest) {
@@ -162,6 +167,10 @@ type ContainerContext struct {
 	Request  ContainerRequest
 	Response ContainerResponse
 	executor resourceexecutor.ResourceUpdateExecutor
+}
+
+func (c *ContainerContext) FromNri(pod *api.PodSandbox, container *api.Container) {
+	c.Request.FromNri(pod, container)
 }
 
 func (c *ContainerContext) FromProxy(req *runtimeapi.ContainerResourceHookRequest) {
