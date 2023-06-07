@@ -41,6 +41,12 @@ func (p *PodMeta) String() string {
 	return fmt.Sprintf("%v/%v", p.Namespace, p.Name)
 }
 
+func (p *PodMeta) FromNri(pod *api.PodSandbox) {
+	p.Namespace = pod.GetNamespace()
+	p.Name = pod.GetName()
+	p.UID = pod.GetUid()
+}
+
 func (p *PodMeta) FromProxy(meta *runtimeapi.PodSandboxMetadata) {
 	p.Namespace = meta.GetNamespace()
 	p.Name = meta.GetName()
