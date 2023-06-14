@@ -53,7 +53,8 @@ We hope to enable NRI mode resource management for koordinator for easy deployme
 
 ## Motivation
 
-Koordinator as a QoS based scheduling system for hybrid workloads orchestration on Kubernetes and its runtime hooks support two working [modes](https://github.com/koordinator-sh/koordinator/blob/main/docs/design-archive/koordlet-runtime-hooks.md) for different scenarios: `Standalone` and `Proxy`. However, both of them have some [constraints](https://shimo.im/docs/m4kMLdgO1LIma9qD). We'd like to integrate NRI framework to address these constraints based on community recommend mechanism.
+Koordinator as a QoS based scheduling system for hybrid workloads orchestration on Kubernetes and its runtime hooks support two working [modes](https://github.com/koordinator-sh/koordinator/blob/main/docs/design-archive/koordlet-runtime-hooks.md) for different scenarios: `Standalone` and `Proxy`. However, both of them have some [constraints](https://shimo.im/docs/m4kMLdgO1LIma9qD). NRI (Node Resource Interface), which is a public interface for controlling node resources is a general framework for CRI-compatible container runtime plug-in extensions. It provides a mechanism for extensions to track the state of pod/containers and make limited modifications to their configuration. We'd like to integrate NRI framework to address `Standalone` and `Proxy` constraints based on this community recommend mechanism.
+
 ### Goals
 
 - Support NRI mode resource management for koordinator.
@@ -131,7 +132,7 @@ func (p *nriServer) CreateContainer(pod *api.PodSandbox, container *api.Containe
 }
 
 func (p *nriServer) UpdateContainer(pod *api.PodSandbox, container *api.Container) ([]*api.ContainerUpdate, error) {
-    containerCtx.FromNri(pod, container)
+	containerCtx.FromNri(pod, container)
 	RunHooks(...)
 	containCtx.NriDone()
 }
@@ -159,6 +160,18 @@ func (c *ContainerContext) NriDone() (*api.ContainerAdjustment, []*api.Container
 ```
 
 ### Risks and Mitigations
+
+## Alternatives
+Currently, NRI implement the same functionality as RuntimeProxy. RuntimeProxy can hijack CRI requests from kubelet for pods and then apply resource policies. However, RuntimeProxy need to configure and restart kubelet.
+- CRI Proxy (e.g. Koordlet + RuntimeProxy)
+
+  kubelet -- CRI Request -> CRI Proxy -- CRI Request (hooked) -> CRI Runtime -- OCI Spec -> OCI compatible runtime -> containers
+
+- NRI
+
+  kubelet -- CRI Request -> CRI Runtime -- OCI Spec --> OCI compatible runtime -> containers  
+  &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;$\searrow$ &emsp; $\nearrow$  
+  &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Koordlet NRI plugin
 
 ## Upgrade Strategy
 
