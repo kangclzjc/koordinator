@@ -19,7 +19,7 @@ var (
 	_          = stub.ConfigureInterface(&nriServer{})
 	pluginName = "koordlet_nri"
 	pluginIdx  = "00"
-	events     string
+	events     = "RunPodSandbox,UpdateContainer,StartContainer"
 	cfg        nriconfig
 	opts       []stub.Option
 	err        error
@@ -40,7 +40,7 @@ type nriServer struct {
 	options Options // server options
 }
 
-func NewNriServer() *nriServer {
+func NewNriServer() (*nriServer, error) {
 	opts = append(opts, stub.WithPluginName(pluginName))
 	if pluginIdx != "" {
 		opts = append(opts, stub.WithPluginIdx(pluginIdx))
@@ -55,7 +55,7 @@ func NewNriServer() *nriServer {
 		log.Fatalf("failed to create plugin stub: %v", err)
 	}
 
-	return p
+	return p, err
 }
 
 func (s *nriServer) Setup() error {
@@ -85,7 +85,6 @@ func (p *nriServer) Configure(config, runtime, version string) (stub.EventMask, 
 		return p.mask, nil
 	}
 
-	oldCfg := cfg
 	err := yaml.Unmarshal([]byte(config), &cfg)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse provided configuration: %w", err)
@@ -96,26 +95,14 @@ func (p *nriServer) Configure(config, runtime, version string) (stub.EventMask, 
 		return 0, fmt.Errorf("failed to parse events in configuration: %w", err)
 	}
 
-	if cfg.LogFile != oldCfg.LogFile {
-		f, err := os.OpenFile(cfg.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			klog.Errorf("failed to open log file %q: %v", cfg.LogFile, err)
-			return 0, fmt.Errorf("failed to open log file %q: %w", cfg.LogFile, err)
-		}
-		log.SetOutput(f)
-	}
-
 	return p.mask, nil
 }
 
 func (p *nriServer) Synchronize(pods []*api.PodSandbox, containers []*api.Container) ([]*api.ContainerUpdate, error) {
-	//configEgressGroup
-	//configingressGroup
 	return nil, nil
 }
 
 func (p *nriServer) Shutdown() {
-	dump("Shutdown")
 }
 
 func (p *nriServer) RunPodSandbox(pod *api.PodSandbox) error {
@@ -126,16 +113,6 @@ func (p *nriServer) RunPodSandbox(pod *api.PodSandbox) error {
 		klog.Errorf("hooks run error: %v", err)
 	}
 	podCtx.NriDone()
-	return nil
-}
-
-func (p *nriServer) StopPodSandbox(pod *api.PodSandbox) error {
-	dump("StopPodSandbox", "pod", pod)
-	return nil
-}
-
-func (p *nriServer) RemovePodSandbox(pod *api.PodSandbox) error {
-	dump("RemovePodSandbox", "pod", pod)
 	return nil
 }
 
@@ -172,21 +149,6 @@ func (p *nriServer) CreateContainer(pod *api.PodSandbox, container *api.Containe
 	return adjust, nil, nil
 }
 
-func (p *nriServer) PostCreateContainer(pod *api.PodSandbox, container *api.Container) error {
-	dump("PostCreateContainer", "pod", pod, "container", container)
-	return nil
-}
-
-func (p *nriServer) StartContainer(pod *api.PodSandbox, container *api.Container) error {
-	dump("StartContainer", "pod", pod, "container", container)
-	return nil
-}
-
-func (p *nriServer) PostStartContainer(pod *api.PodSandbox, container *api.Container) error {
-	dump("PostStartContainer", "pod", pod, "container", container)
-	return nil
-}
-
 func (p *nriServer) UpdateContainer(pod *api.PodSandbox, container *api.Container) ([]*api.ContainerUpdate, error) {
 	containerCtx := &protocol.ContainerContext{}
 	containerCtx.FromNri(pod, container)
@@ -215,55 +177,6 @@ func (p *nriServer) UpdateContainer(pod *api.PodSandbox, container *api.Containe
 	return []*api.ContainerUpdate{update}, nil
 }
 
-func (p *nriServer) PostUpdateContainer(pod *api.PodSandbox, container *api.Container) error {
-	dump("PostUpdateContainer", "pod", pod, "container", container)
-	return nil
-}
-
-func (p *nriServer) StopContainer(pod *api.PodSandbox, container *api.Container) ([]*api.ContainerUpdate, error) {
-	dump("StopContainer", "pod", pod, "container", container)
-	return nil, nil
-}
-
-func (p *nriServer) RemoveContainer(pod *api.PodSandbox, container *api.Container) error {
-	dump("RemoveContainer", "pod", pod, "container", container)
-	return nil
-}
-
 func (p *nriServer) onClose() {
 	os.Exit(0)
-}
-
-// Dump one or more objects, with an optional global prefix and per-object tags.
-func dump(args ...interface{}) {
-	var (
-		prefix string
-		idx    int
-	)
-
-	if len(args)&0x1 == 1 {
-		prefix = args[0].(string)
-		idx++
-	}
-
-	for ; idx < len(args)-1; idx += 2 {
-		tag, obj := args[idx], args[idx+1]
-		msg, err := yaml.Marshal(obj)
-		if err != nil {
-			klog.Infof("%s: %s: failed to dump object: %v", prefix, tag, err)
-			continue
-		}
-
-		if prefix != "" {
-			klog.Infof("%s: %s:", prefix, tag)
-			for _, line := range strings.Split(strings.TrimSpace(string(msg)), "\n") {
-				klog.Infof("%s:    %s", prefix, line)
-			}
-		} else {
-			klog.Infof("%s:", tag)
-			for _, line := range strings.Split(strings.TrimSpace(string(msg)), "\n") {
-				klog.Infof("  %s", line)
-			}
-		}
-	}
 }

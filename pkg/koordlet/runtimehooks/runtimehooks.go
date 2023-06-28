@@ -85,8 +85,17 @@ func NewRuntimeHook(si statesinformer.StatesInformer, cfg *Config) (RuntimeHook,
 		Executor:            e,
 	}
 
-	nris := proxyserver.NewNriServer()
-	nris.Setup()
+	//if !flag {
+	//	nris, err := proxyserver.NewNriServer()
+	//	if err != nil {
+	//		klog.Errorf("new nri server error, %v", err)
+	//	}
+	//	err := nris.Setup()
+	//	if err != nil {
+	//
+	//	}
+	//}
+
 	s, err := proxyserver.NewServer(newServerOptions)
 	newReconcilerOptions := reconciler.Options{
 		StatesInformer: si,
