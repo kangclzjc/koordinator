@@ -18,6 +18,7 @@ package protocol
 
 import (
 	"fmt"
+	"github.com/containerd/nri/pkg/api"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
@@ -40,6 +41,12 @@ func (p *PodMeta) String() string {
 	return fmt.Sprintf("%v/%v", p.Namespace, p.Name)
 }
 
+func (p *PodMeta) FromNri(pod *api.PodSandbox) {
+	p.Namespace = pod.GetNamespace()
+	p.Name = pod.GetName()
+	p.UID = pod.GetUid()
+}
+
 func (p *PodMeta) FromProxy(meta *runtimeapi.PodSandboxMetadata) {
 	p.Namespace = meta.GetNamespace()
 	p.Name = meta.GetName()
@@ -58,6 +65,14 @@ type PodRequest struct {
 	Annotations       map[string]string
 	CgroupParent      string
 	ExtendedResources *apiext.ExtendedResourceSpec
+}
+
+func (p *PodRequest) FromNri(od *api.PodSandbox) {
+
+}
+
+func (p *PodContext) NriDone() {
+	p.injectForExt()
 }
 
 func (p *PodRequest) FromProxy(req *runtimeapi.PodSandboxHookRequest) {
@@ -122,6 +137,10 @@ func (p *PodResponse) ProxyDone(resp *runtimeapi.PodSandboxHookResponse) {
 	if p.Resources.MemoryLimit != nil {
 		resp.Resources.MemoryLimitInBytes = *p.Resources.MemoryLimit
 	}
+}
+
+func (p *PodContext) FromNri(pod *api.PodSandbox) {
+	p.Request.FromNri(pod)
 }
 
 func (p *PodContext) FromProxy(req *runtimeapi.PodSandboxHookRequest) {

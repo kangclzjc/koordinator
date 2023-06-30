@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/NVIDIA/go-nvml v0.11.6-0.0.20220823120812-7e2082095e82
 	github.com/cakturk/go-netstat v0.0.0-20200220111822-e5b49efee7a5
+	github.com/containerd/nri v0.3.0
 	github.com/docker/docker v20.10.21+incompatible
 	github.com/evanphx/json-patch v5.6.0+incompatible
 	github.com/fsnotify/fsnotify v1.6.0
@@ -22,7 +23,7 @@ require (
 	github.com/k8stopologyawareschedwg/noderesourcetopology-api v0.1.1
 	github.com/mohae/deepcopy v0.0.0-20170603005431-491d3605edfb
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.19.0
+	github.com/onsi/gomega v1.24.0
 	github.com/opencontainers/runc v1.1.6
 	github.com/openkruise/kruise-api v1.3.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -50,7 +51,7 @@ require (
 	k8s.io/code-generator v0.26.0
 	k8s.io/component-base v0.26.0
 	k8s.io/component-helpers v0.26.0
-	k8s.io/cri-api v0.22.6
+	k8s.io/cri-api v0.25.3
 	k8s.io/klog/v2 v2.80.1
 	k8s.io/kube-scheduler v0.22.6
 	k8s.io/kubectl v0.22.6
@@ -78,8 +79,8 @@ require (
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.16.1-0.20210702024009-ea6160c1d0e3 // indirect
 	github.com/JeffAshton/win_pdh v0.0.0-20161109143554-76bb4ee9f0ab // indirect
-	github.com/Microsoft/go-winio v0.5.1 // indirect
-	github.com/Microsoft/hcsshim v0.8.23 // indirect
+	github.com/Microsoft/go-winio v0.5.2 // indirect
+	github.com/Microsoft/hcsshim v0.9.4 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e // indirect
@@ -92,10 +93,10 @@ require (
 	github.com/cilium/ebpf v0.7.0 // indirect
 	github.com/clusterhq/flocker-go v0.0.0-20160920122132-2b8b7259d313 // indirect
 	github.com/container-storage-interface/spec v1.5.0 // indirect
-	github.com/containerd/cgroups v1.0.1 // indirect
+	github.com/containerd/cgroups v1.0.3 // indirect
 	github.com/containerd/console v1.0.3 // indirect
-	github.com/containerd/containerd v1.5.10 // indirect
-	github.com/containerd/ttrpc v1.1.0 // indirect
+	github.com/containerd/containerd v1.6.9 // indirect
+	github.com/containerd/ttrpc v1.1.1-0.20220420014843-944ef4a40df3 // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.3 // indirect
@@ -165,9 +166,9 @@ require (
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/opencontainers/image-spec v1.0.2 // indirect
+	github.com/opencontainers/image-spec v1.0.3-0.20211202183452-c5a74bcca799 // indirect
 	github.com/opencontainers/runtime-spec v1.0.3-0.20220909204839-494a5a6aca78 // indirect
-	github.com/opencontainers/selinux v1.10.0 // indirect
+	github.com/opencontainers/selinux v1.10.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -184,8 +185,8 @@ require (
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
 	github.com/ugorji/go/codec v1.2.7 // indirect
-	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852 // indirect
-	github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae // indirect
+	github.com/vishvananda/netlink v1.1.1-0.20210330154013-f5de75959ad5 // indirect
+	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f // indirect
 	github.com/vmware/govmomi v0.30.0 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.5 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.5 // indirect

@@ -18,6 +18,7 @@ package runtimehooks
 
 import (
 	"fmt"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/nri"
 
 	"k8s.io/klog/v2"
 
@@ -83,6 +84,15 @@ func NewRuntimeHook(si statesinformer.StatesInformer, cfg *Config) (RuntimeHook,
 		ConfigFilePath:      cfg.RuntimeHookConfigFilePath,
 		DisableStages:       getDisableStagesMap(cfg.RuntimeHookDisableStages),
 		Executor:            e,
+	}
+
+	nris, err := nri.NewNriServer()
+	if err != nil {
+		klog.Errorf("new nri server error, %v", err)
+	}
+	err = nris.Setup()
+	if err != nil {
+		klog.Errorf("new nri server error, %v", err)
 	}
 	s, err := proxyserver.NewServer(newServerOptions)
 	newReconcilerOptions := reconciler.Options{
