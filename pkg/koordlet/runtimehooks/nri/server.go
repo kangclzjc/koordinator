@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"github.com/containerd/nri/pkg/api"
 	"github.com/containerd/nri/pkg/stub"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/protocol"
-	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/proxyserver"
+	"github.com/koordinator-sh/koordinator/pkg/runtimeproxy/config"
 	rmconfig "github.com/koordinator-sh/koordinator/pkg/runtimeproxy/config"
 	"k8s.io/klog/v2"
 	"log"
@@ -35,10 +36,19 @@ type nriconfig struct {
 	SetEnv        string   `json:"setEnv"`
 }
 
+type Options struct {
+	FailurePolicy config.FailurePolicyType
+	// support stop running other hooks once someone failed
+	PluginFailurePolicy config.FailurePolicyType
+	ConfigFilePath      string
+	DisableStages       map[string]struct{}
+	Executor            resourceexecutor.ResourceUpdateExecutor
+}
+
 type nriServer struct {
 	stub    stub.Stub
 	mask    stub.EventMask
-	options proxyserver.Options // server options
+	options Options // server options
 }
 
 func NewNriServer() (*nriServer, error) {
