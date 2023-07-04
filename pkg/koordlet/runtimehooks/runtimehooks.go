@@ -43,6 +43,7 @@ type RuntimeHook interface {
 type runtimeHook struct {
 	statesInformer statesinformer.StatesInformer
 	server         proxyserver.Server
+	nriServer      *nri.NriServer
 	reconciler     reconciler.Reconciler
 	executor       resourceexecutor.ResourceUpdateExecutor
 }
@@ -52,6 +53,10 @@ func (r *runtimeHook) Run(stopCh <-chan struct{}) error {
 	go r.executor.Run(stopCh)
 	if err := r.server.Start(); err != nil {
 		return err
+	}
+	if err := r.nriServer.Start(); err != nil {
+		// if NRI is not enabled or container runtime not support NRI, we just skip NRI server start
+		klog.Errorf("nri runtime hook server start failed: %v", err)
 	}
 	if err := r.reconciler.Run(stopCh); err != nil {
 		return err
@@ -90,10 +95,7 @@ func NewRuntimeHook(si statesinformer.StatesInformer, cfg *Config) (RuntimeHook,
 	if err != nil {
 		klog.Errorf("new nri server error, %v", err)
 	}
-	err = nris.Setup()
-	if err != nil {
-		klog.Errorf("new nri server error, %v", err)
-	}
+
 	s, err := proxyserver.NewServer(newServerOptions)
 	newReconcilerOptions := reconciler.Options{
 		StatesInformer: si,
@@ -110,6 +112,7 @@ func NewRuntimeHook(si statesinformer.StatesInformer, cfg *Config) (RuntimeHook,
 	r := &runtimeHook{
 		statesInformer: si,
 		server:         s,
+		nriServer:      nris,
 		reconciler:     reconciler.NewReconciler(newReconcilerOptions),
 		executor:       e,
 	}

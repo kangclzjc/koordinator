@@ -1,7 +1,6 @@
 package nri
 
 import (
-	"context"
 	"fmt"
 	"github.com/containerd/nri/pkg/api"
 	"github.com/containerd/nri/pkg/stub"
@@ -10,21 +9,10 @@ import (
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/protocol"
 	"github.com/koordinator-sh/koordinator/pkg/runtimeproxy/config"
 	rmconfig "github.com/koordinator-sh/koordinator/pkg/runtimeproxy/config"
+	"golang.org/x/net/context"
 	"k8s.io/klog/v2"
-	"log"
-	"os"
 	"sigs.k8s.io/yaml"
 	"strings"
-)
-
-var (
-	_          = stub.ConfigureInterface(&nriServer{})
-	pluginName = "koordlet_nri"
-	pluginIdx  = "00"
-	events     = "RunPodSandbox,UpdateContainer,StartContainer"
-	cfg        nriconfig
-	opts       []stub.Option
-	err        error
 )
 
 type nriconfig struct {
@@ -45,52 +33,56 @@ type Options struct {
 	Executor            resourceexecutor.ResourceUpdateExecutor
 }
 
-type nriServer struct {
-	stub    stub.Stub
-	mask    stub.EventMask
-	options Options // server options
+type NriServer struct {
+	stub            stub.Stub
+	mask            stub.EventMask
+	options         Options // server options
+	runPodSandbox   func(*NriServer, *api.PodSandbox, *api.Container) error
+	createContainer func(*NriServer, *api.PodSandbox, *api.Container) (*api.ContainerAdjustment, []*api.ContainerUpdate, error)
+	updateContainer func(*NriServer, *api.PodSandbox, *api.Container) ([]*api.ContainerUpdate, error)
 }
 
-func NewNriServer() (*nriServer, error) {
+var (
+	_          = stub.ConfigureInterface(&NriServer{})
+	_          = stub.SynchronizeInterface(&NriServer{})
+	_          = stub.CreateContainerInterface(&NriServer{})
+	_          = stub.UpdateContainerInterface(&NriServer{})
+	pluginName = "koordlet_nri"
+	pluginIdx  = "00"
+	events     = "RunPodSandbox,StartContainer,UpdateContainer"
+	cfg        nriconfig
+	opts       []stub.Option
+	err        error
+)
+
+func NewNriServer() (*NriServer, error) {
 	opts = append(opts, stub.WithPluginName(pluginName))
-	if pluginIdx != "" {
-		opts = append(opts, stub.WithPluginIdx(pluginIdx))
-	}
-	p := &nriServer{}
+	opts = append(opts, stub.WithPluginIdx(pluginIdx))
+	p := &NriServer{}
 	if p.mask, err = api.ParseEventMask(events); err != nil {
-		log.Fatalf("failed to parse events: %v", err)
+		klog.Errorf("failed to parse events: %v", err)
 	}
 	cfg.Events = strings.Split(events, ",")
 
 	if p.stub, err = stub.New(p, append(opts, stub.WithOnClose(p.onClose))...); err != nil {
-		log.Fatalf("failed to create plugin stub: %v", err)
+		klog.Errorf("failed to create plugin stub: %v", err)
 	}
 
 	return p, err
 }
 
-func (s *nriServer) Setup() error {
-	err = s.stub.Run(context.Background())
-	if err != nil {
-		klog.Errorf("plugin exited with error %v", err)
-		os.Exit(1)
-	}
+func (s *NriServer) Start() error {
+	go func() {
+		s.stub.Run(context.Background())
+	}()
 	return nil
 }
 
-func (s *nriServer) Start() error {
-	return nil
+func (s *NriServer) Stop() {
+	s.stub.Stop()
 }
 
-func (s *nriServer) Stop() {
-
-}
-
-func (s *nriServer) Register() error {
-	return nil
-}
-
-func (p *nriServer) Configure(config, runtime, version string) (stub.EventMask, error) {
+func (p *NriServer) Configure(config, runtime, version string) (stub.EventMask, error) {
 	klog.Infof("got configuration data: %q from runtime %s %s", config, runtime, version)
 	if config == "" {
 		return p.mask, nil
@@ -109,14 +101,11 @@ func (p *nriServer) Configure(config, runtime, version string) (stub.EventMask, 
 	return p.mask, nil
 }
 
-func (p *nriServer) Synchronize(pods []*api.PodSandbox, containers []*api.Container) ([]*api.ContainerUpdate, error) {
+func (p *NriServer) Synchronize(pods []*api.PodSandbox, containers []*api.Container) ([]*api.ContainerUpdate, error) {
 	return nil, nil
 }
 
-func (p *nriServer) Shutdown() {
-}
-
-func (p *nriServer) RunPodSandbox(pod *api.PodSandbox) error {
+func (p *NriServer) RunPodSandbox(pod *api.PodSandbox) error {
 	podCtx := &protocol.PodContext{}
 	podCtx.FromNri(pod)
 	err := hooks.RunHooks(p.options.PluginFailurePolicy, rmconfig.PreRunPodSandbox, podCtx)
@@ -127,7 +116,7 @@ func (p *nriServer) RunPodSandbox(pod *api.PodSandbox) error {
 	return nil
 }
 
-func (p *nriServer) CreateContainer(pod *api.PodSandbox, container *api.Container) (*api.ContainerAdjustment, []*api.ContainerUpdate, error) {
+func (p *NriServer) CreateContainer(pod *api.PodSandbox, container *api.Container) (*api.ContainerAdjustment, []*api.ContainerUpdate, error) {
 	containerCtx := &protocol.ContainerContext{}
 	containerCtx.FromNri(pod, container)
 	err := hooks.RunHooks(p.options.PluginFailurePolicy, rmconfig.PreCreateContainer, containerCtx)
@@ -160,7 +149,7 @@ func (p *nriServer) CreateContainer(pod *api.PodSandbox, container *api.Containe
 	return adjust, nil, nil
 }
 
-func (p *nriServer) UpdateContainer(pod *api.PodSandbox, container *api.Container) ([]*api.ContainerUpdate, error) {
+func (p *NriServer) UpdateContainer(pod *api.PodSandbox, container *api.Container) ([]*api.ContainerUpdate, error) {
 	containerCtx := &protocol.ContainerContext{}
 	containerCtx.FromNri(pod, container)
 	err := hooks.RunHooks(p.options.PluginFailurePolicy, rmconfig.PreCreateContainer, containerCtx)
@@ -188,6 +177,6 @@ func (p *nriServer) UpdateContainer(pod *api.PodSandbox, container *api.Containe
 	return []*api.ContainerUpdate{update}, nil
 }
 
-func (p *nriServer) onClose() {
-	os.Exit(0)
+func (p *NriServer) onClose() {
+	p.stub.Stop()
 }
