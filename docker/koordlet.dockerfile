@@ -4,6 +4,9 @@ WORKDIR /go/src/github.com/koordinator-sh/koordinator
 COPY go.mod go.mod
 COPY go.sum go.sum
 
+ENV HTTPS_PROXY=http://child-prc.intel.com:913
+ENV HTTP_PROXY=http://child-prc.intel.com:913
+ENV NO_PROXY=localhost,127.0.0.0/8,10.0.0.0/16
 RUN go mod download
 
 COPY apis/ apis/

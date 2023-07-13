@@ -37,19 +37,24 @@ type NriServer struct {
 	stub            stub.Stub
 	mask            stub.EventMask
 	options         Options // server options
+	/*
 	runPodSandbox   func(*NriServer, *api.PodSandbox, *api.Container) error
 	createContainer func(*NriServer, *api.PodSandbox, *api.Container) (*api.ContainerAdjustment, []*api.ContainerUpdate, error)
 	updateContainer func(*NriServer, *api.PodSandbox, *api.Container) ([]*api.ContainerUpdate, error)
+	*/
 }
 
 var (
 	_          = stub.ConfigureInterface(&NriServer{})
+	/*
 	_          = stub.SynchronizeInterface(&NriServer{})
 	_          = stub.CreateContainerInterface(&NriServer{})
 	_          = stub.UpdateContainerInterface(&NriServer{})
+	*/
 	pluginName = "koordlet_nri"
 	pluginIdx  = "00"
-	events     = "RunPodSandbox,StartContainer,UpdateContainer"
+	//events     = "RunPodSandbox,StartContainer,UpdateContainer"
+	events     = "all"
 	cfg        nriconfig
 	opts       []stub.Option
 	err        error
@@ -73,13 +78,18 @@ func NewNriServer() (*NriServer, error) {
 
 func (s *NriServer) Start() error {
 	go func() {
-		s.stub.Run(context.Background())
+	  klog.Info("-------nri start-----------")
+	  err := s.stub.Run(context.Background())
+	  	if err != nil {
+	  	klog.Errorf("plugin exited with error %v", err)
+	  }
 	}()
+	klog.Info("-------nri start1-----------")
 	return nil
 }
 
 func (s *NriServer) Stop() {
-	s.stub.Stop()
+	//s.stub.Stop()
 }
 
 func (p *NriServer) Configure(config, runtime, version string) (stub.EventMask, error) {
@@ -106,6 +116,7 @@ func (p *NriServer) Synchronize(pods []*api.PodSandbox, containers []*api.Contai
 }
 
 func (p *NriServer) RunPodSandbox(pod *api.PodSandbox) error {
+	klog.Infof("----------------RunPodSandbox------------------")
 	podCtx := &protocol.PodContext{}
 	podCtx.FromNri(pod)
 	err := hooks.RunHooks(p.options.PluginFailurePolicy, rmconfig.PreRunPodSandbox, podCtx)
@@ -178,5 +189,41 @@ func (p *NriServer) UpdateContainer(pod *api.PodSandbox, container *api.Containe
 }
 
 func (p *NriServer) onClose() {
-	p.stub.Stop()
+//	p.stub.Stop()
 }
+
+func (p *NriServer) Shutdown() {
+}
+
+func (p *NriServer) StopPodSandbox(pod *api.PodSandbox) error {
+	return nil
+}
+
+func (p *NriServer) RemovePodSandbox(pod *api.PodSandbox) error {
+	return nil
+}
+
+func (p *NriServer) PostCreateContainer(pod *api.PodSandbox, container *api.Container) error {
+	return nil
+}
+
+func (p *NriServer) StartContainer(pod *api.PodSandbox, container *api.Container) error {
+	return nil
+}
+
+func (p *NriServer) PostStartContainer(pod *api.PodSandbox, container *api.Container) error {
+	return nil
+}
+
+func (p *NriServer) PostUpdateContainer(pod *api.PodSandbox, container *api.Container) error {
+	return nil
+}
+
+func (p *NriServer) StopContainer(pod *api.PodSandbox, container *api.Container) ([]*api.ContainerUpdate, error) {
+	return nil, nil
+}
+
+func (p *NriServer) RemoveContainer(pod *api.PodSandbox, container *api.Container) error {
+	return nil
+}
+

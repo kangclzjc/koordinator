@@ -219,6 +219,7 @@ func (e *ResourceUpdateExecutorImpl) needUpdate(updater ResourceUpdater) bool {
 func (e *ResourceUpdateExecutorImpl) update(updater ResourceUpdater) error {
 	err := updater.update()
 	if err != nil && e.isUpdateErrIgnored(err) {
+		klog.Infof("-----------kang--------- failed to update resource %s to %v, ignored err: %v", updater.Key(), updater.Value(), err)
 		klog.V(5).Infof("failed to update resource %s to %v, ignored err: %v", updater.Key(), updater.Value(), err)
 		return nil
 	}
