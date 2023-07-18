@@ -91,7 +91,7 @@ func NewRuntimeHook(si statesinformer.StatesInformer, cfg *Config) (RuntimeHook,
 		Executor:            e,
 	}
 
-	nris, err := nri.NewNriServer()
+	nris, err := nri.NewNriServer(newServerOptions)
 	if err != nil {
 		klog.Errorf("new nri server error, %v", err)
 	}

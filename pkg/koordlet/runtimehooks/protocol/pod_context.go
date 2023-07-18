@@ -81,10 +81,14 @@ func (p *PodRequest) FromNri(pod *api.PodSandbox) {
 	if spec != nil && spec.Containers != nil {
 		p.ExtendedResources = spec
 	}
+	klog.Infof("---------kang----------p annotations is %v, spec is %v", p.Annotations, spec)
 }
 
-func (p *PodContext) NriDone() {
+func (p *PodContext) NriDone(executor resourceexecutor.ResourceUpdateExecutor) {
 	klog.Info("---------------kang------- nri done-----------")
+	if p.executor == nil {
+		p.executor = executor
+	}
 	p.injectForExt()
 }
 
