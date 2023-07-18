@@ -67,8 +67,20 @@ type PodRequest struct {
 	ExtendedResources *apiext.ExtendedResourceSpec
 }
 
-func (p *PodRequest) FromNri(od *api.PodSandbox) {
-
+func (p *PodRequest) FromNri(pod *api.PodSandbox) {
+	p.PodMeta.FromNri(pod)
+	p.Labels = pod.GetLabels()
+	p.Annotations = pod.GetAnnotations()
+	p.CgroupParent = pod.GetLinux().GetCgroupParent()
+	// retrieve ExtendedResources from pod annotations
+	spec, err := apiext.GetExtendedResourceSpec(pod.GetAnnotations())
+	if err != nil {
+		klog.V(4).Infof("failed to get ExtendedResourceSpec from nri via annotation, pod %s/%s, err: %s",
+			p.PodMeta.Namespace, p.PodMeta.Name, err)
+	}
+	if spec != nil && spec.Containers != nil {
+		p.ExtendedResources = spec
+	}
 }
 
 func (p *PodContext) NriDone() {
