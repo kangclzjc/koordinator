@@ -58,9 +58,9 @@ func (r *runtimeHook) Run(stopCh <-chan struct{}) error {
 		// if NRI is not enabled or container runtime not support NRI, we just skip NRI server start
 		klog.Errorf("nri runtime hook server start failed: %v", err)
 	}
-	if err := r.reconciler.Run(stopCh); err != nil {
-		return err
-	}
+	//if err := r.reconciler.Run(stopCh); err != nil {
+	//	return err
+	//}
 	if err := r.server.Register(); err != nil {
 		return err
 	}

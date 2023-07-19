@@ -28,9 +28,7 @@ import (
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/protocol"
-	//"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/reconciler"
-	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/rule"
-	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
+
 	sysutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
 	rmconfig "github.com/koordinator-sh/koordinator/pkg/runtimeproxy/config"
 	"github.com/koordinator-sh/koordinator/pkg/util"
@@ -51,26 +49,24 @@ var podQOSConditions = []string{string(apiext.QoSBE), string(apiext.QoSLS), stri
 
 func (p *plugin) Register(op hooks.Options) {
 	klog.V(5).Infof("register hook %v", name)
-	rule.Register(name, description,
-		rule.WithParseFunc(statesinformer.RegisterTypeNodeSLOSpec, p.parseRule),
-		rule.WithUpdateCallback(p.ruleUpdateCb))
+	//rule.Register(name, description,
+	//	rule.WithParseFunc(statesinformer.RegisterTypeNodeSLOSpec, p.parseRule),
+	//	rule.WithUpdateCallback(p.ruleUpdateCb))
 	hooks.Register(rmconfig.PreRunPodSandbox, name, description+" (pod)", p.SetPodResources)
 	hooks.Register(rmconfig.PreCreateContainer, name, description+" (container)", p.SetContainerResources)
 	hooks.Register(rmconfig.PreUpdateContainerResources, name, description+" (container)", p.SetContainerResources)
-	/*
-	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, sysutil.CPUShares, description+" (pod cpu shares)",
-		p.SetPodCPUShares, reconciler.PodQOSFilter(), podQOSConditions...)
-	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, sysutil.CPUCFSQuota, description+" (pod cfs quota)",
-		p.SetPodCFSQuota, reconciler.PodQOSFilter(), podQOSConditions...)
-	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, sysutil.MemoryLimit, description+" (pod memory limit)",
-		p.SetPodMemoryLimit, reconciler.PodQOSFilter(), podQOSConditions...)
-	reconciler.RegisterCgroupReconciler(reconciler.ContainerLevel, sysutil.CPUShares, description+" (container cpu shares)",
-		p.SetContainerCPUShares, reconciler.PodQOSFilter(), podQOSConditions...)
-	reconciler.RegisterCgroupReconciler(reconciler.ContainerLevel, sysutil.CPUCFSQuota, description+" (container cfs quota)",
-		p.SetContainerCFSQuota, reconciler.PodQOSFilter(), podQOSConditions...)
-	reconciler.RegisterCgroupReconciler(reconciler.ContainerLevel, sysutil.MemoryLimit, description+" (container memory limit)",
-		p.SetContainerMemoryLimit, reconciler.PodQOSFilter(), podQOSConditions...)
-	*/
+	//reconciler.RegisterCgroupReconciler(reconciler.PodLevel, sysutil.CPUShares, description+" (pod cpu shares)",
+	//	p.SetPodCPUShares, reconciler.PodQOSFilter(), podQOSConditions...)
+	//reconciler.RegisterCgroupReconciler(reconciler.PodLevel, sysutil.CPUCFSQuota, description+" (pod cfs quota)",
+	//	p.SetPodCFSQuota, reconciler.PodQOSFilter(), podQOSConditions...)
+	//reconciler.RegisterCgroupReconciler(reconciler.PodLevel, sysutil.MemoryLimit, description+" (pod memory limit)",
+	//	p.SetPodMemoryLimit, reconciler.PodQOSFilter(), podQOSConditions...)
+	//reconciler.RegisterCgroupReconciler(reconciler.ContainerLevel, sysutil.CPUShares, description+" (container cpu shares)",
+	//	p.SetContainerCPUShares, reconciler.PodQOSFilter(), podQOSConditions...)
+	//reconciler.RegisterCgroupReconciler(reconciler.ContainerLevel, sysutil.CPUCFSQuota, description+" (container cfs quota)",
+	//	p.SetContainerCFSQuota, reconciler.PodQOSFilter(), podQOSConditions...)
+	//reconciler.RegisterCgroupReconciler(reconciler.ContainerLevel, sysutil.MemoryLimit, description+" (container memory limit)",
+	//	p.SetContainerMemoryLimit, reconciler.PodQOSFilter(), podQOSConditions...)
 	p.executor = op.Executor
 }
 
