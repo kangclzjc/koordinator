@@ -18,6 +18,8 @@ package batchresource
 
 import (
 	"fmt"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/rule"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
 	"sync"
 
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -49,9 +51,9 @@ var podQOSConditions = []string{string(apiext.QoSBE), string(apiext.QoSLS), stri
 
 func (p *plugin) Register(op hooks.Options) {
 	klog.V(5).Infof("register hook %v", name)
-	//rule.Register(name, description,
-	//	rule.WithParseFunc(statesinformer.RegisterTypeNodeSLOSpec, p.parseRule),
-	//	rule.WithUpdateCallback(p.ruleUpdateCb))
+	rule.Register(name, description,
+		rule.WithParseFunc(statesinformer.RegisterTypeNodeSLOSpec, p.parseRule),
+		rule.WithUpdateCallback(p.ruleUpdateCb))
 	hooks.Register(rmconfig.PreRunPodSandbox, name, description+" (pod)", p.SetPodResources)
 	hooks.Register(rmconfig.PreCreateContainer, name, description+" (container)", p.SetContainerResources)
 	hooks.Register(rmconfig.PreUpdateContainerResources, name, description+" (container)", p.SetContainerResources)
