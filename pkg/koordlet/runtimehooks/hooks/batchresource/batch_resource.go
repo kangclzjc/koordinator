@@ -82,7 +82,6 @@ func Object() *plugin {
 }
 
 func (p *plugin) SetPodResources(proto protocol.HooksProtocol) error {
-	klog.Info("--------kang---------------------------\n")
 	podCtx := proto.(*protocol.PodContext)
 	if podCtx == nil {
 		return fmt.Errorf("pod protocol is nil for plugin %v", name)
@@ -101,7 +100,6 @@ func (p *plugin) SetPodResources(proto protocol.HooksProtocol) error {
 	}
 
 	err2 := p.SetPodMemoryLimit(proto)
-	klog.Infof("--------kang--------%v--------------------%v -------- cfsquota is \n", err1, err2)
 	if err2 != nil {
 		klog.V(5).Infof("failed to set pod memory limit in plugin %s, pod %s/%s, err: %v",
 			name, podCtx.Request.PodMeta.Namespace, podCtx.Request.PodMeta.Name, err2)
@@ -149,24 +147,20 @@ func (p *plugin) SetPodCPUShares(proto protocol.HooksProtocol) error {
 
 func (p *plugin) SetPodCFSQuota(proto protocol.HooksProtocol) error {
 	podCtx := proto.(*protocol.PodContext)
-	klog.Infof("---------kang setpod start--------%v", podCtx)
 	if podCtx == nil {
 		return fmt.Errorf("pod protocol is nil for plugin %v", name)
 	}
 
-	klog.Infof("---------kang setpod start1--------%v", podCtx)
 	if !isPodQoSBEByAttr(podCtx.Request.Labels, podCtx.Request.Annotations) {
 		return nil
 	}
 
-	klog.Infof("---------kang setpod start2--------%v", podCtx)
 	extendedResourceSpec := podCtx.Request.ExtendedResources
 	// if the extendedResourceSpec is empty, do nothing and keep the original cgroup configs
 	if extendedResourceSpec == nil {
 		return nil
 	}
 
-	klog.Infof("---------kang setpod start3--------%v", podCtx)
 	// if cfs quota is disabled, set as -1
 	if !p.getRule().getEnableCFSQuota() {
 		podCtx.Response.Resources.CFSQuota = pointer.Int64(-1)
@@ -174,7 +168,6 @@ func (p *plugin) SetPodCFSQuota(proto protocol.HooksProtocol) error {
 		return nil
 	}
 
-	klog.Infof("---------kang setpod start4--------%v", podCtx)
 	milliCPULimit := int64(0)
 	// TODO: count init container and pod overhead
 	for _, c := range extendedResourceSpec.Containers {
@@ -198,7 +191,6 @@ func (p *plugin) SetPodCFSQuota(proto protocol.HooksProtocol) error {
 	}
 
 	podCtx.Response.Resources.CFSQuota = pointer.Int64(cfsQuota)
-	klog.Infof("---------kang--------%v", podCtx.Response.Resources)
 	return nil
 }
 

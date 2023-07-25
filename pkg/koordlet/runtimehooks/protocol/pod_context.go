@@ -81,12 +81,9 @@ func (p *PodRequest) FromNri(pod *api.PodSandbox) {
 	if spec != nil && spec.Containers != nil {
 		p.ExtendedResources = spec
 	}
-	klog.Infof("---------kang----------p spec is %v", spec)
-	klog.Infof("---------kang----------p annotations is %v, ------------ spec is %v", p.Annotations, spec)
 }
 
 func (p *PodContext) NriDone(executor resourceexecutor.ResourceUpdateExecutor) {
-	klog.Info("---------------kang------- nri done-----------")
 	if p.executor == nil {
 		p.executor = executor
 	}
@@ -107,9 +104,6 @@ func (p *PodRequest) FromProxy(req *runtimeapi.PodSandboxHookRequest) {
 	if spec != nil && spec.Containers != nil {
 		p.ExtendedResources = spec
 	}
-	klog.Infof("---------kang fromproxy----------p spec is %v", spec)
-	klog.Infof("---------kang fromproxy----------p annotations is %v, ------------ spec is %v", p.Annotations, spec)
-
 }
 
 func (p *PodRequest) FromReconciler(podMeta *statesinformer.PodMeta) {
@@ -193,7 +187,6 @@ func (p *PodContext) injectForOrigin() {
 }
 
 func (p *PodContext) injectForExt() {
-	klog.Infof("------------kang-----------injectForExt %v", p.Response.Resources.CPUShares)
 	if p.Response.Resources.CPUBvt != nil {
 		eventHelper := audit.V(3).Pod(p.Request.PodMeta.Namespace, p.Request.PodMeta.Name).Reason("runtime-hooks").Message(
 			"set pod bvt to %v", *p.Response.Resources.CPUBvt)
@@ -221,16 +214,11 @@ func (p *PodContext) injectForExt() {
 	if p.Response.Resources.CFSQuota != nil {
 		eventHelper := audit.V(3).Pod(p.Request.PodMeta.Namespace, p.Request.PodMeta.Name).Reason("runtime-hooks").Message(
 			"set pod cfs quota to %v", *p.Response.Resources.CFSQuota)
-		klog.Infof("---------------kang---------------cfs quota: %v\n", *p.Response.Resources.CFSQuota)
 		if err := injectCPUQuota(p.Request.CgroupParent, *p.Response.Resources.CFSQuota, eventHelper, p.executor); err != nil {
 			klog.Infof("set pod %v/%v cfs quota %v on cgroup parent %v failed, error %v", p.Request.PodMeta.Namespace,
 				p.Request.PodMeta.Name, *p.Response.Resources.CFSQuota, p.Request.CgroupParent, err)
-			klog.Errorf("kang set pod %v/%v cfs quota %v on cgroup parent %v failed, error %v", p.Request.PodMeta.Namespace,
-				p.Request.PodMeta.Name, *p.Response.Resources.CFSQuota, p.Request.CgroupParent, err)
 		} else {
 			klog.V(5).Infof("set pod %v/%v cfs quota %v on cgroup parent %v",
-				p.Request.PodMeta.Namespace, p.Request.PodMeta.Name, *p.Response.Resources.CFSQuota, p.Request.CgroupParent)
-			klog.Infof("kang set pod %v/%v cfs quota %v on cgroup parent %v",
 				p.Request.PodMeta.Namespace, p.Request.PodMeta.Name, *p.Response.Resources.CFSQuota, p.Request.CgroupParent)
 		}
 	}

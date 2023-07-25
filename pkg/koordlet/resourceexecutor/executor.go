@@ -62,7 +62,6 @@ func NewResourceUpdateExecutor() ResourceUpdateExecutor {
 
 // Update updates the resources with the given cacheable attribute with the cacheable attribute directly.
 func (e *ResourceUpdateExecutorImpl) Update(cacheable bool, resource ResourceUpdater) (bool, error) {
-	klog.Infof("----------kang update cgroup, %v", cacheable)
 	if cacheable {
 		if !e.gcStarted {
 			klog.V(5).Info("failed to cacheable update resources, err: cache GC is not started")
@@ -219,9 +218,7 @@ func (e *ResourceUpdateExecutorImpl) needUpdate(updater ResourceUpdater) bool {
 
 func (e *ResourceUpdateExecutorImpl) update(updater ResourceUpdater) error {
 	err := updater.update()
-	klog.Infof("-----------kang--------- update resource %s to %v, ignored err: %v", updater.Key(), updater.Value(), err)
 	if err != nil && e.isUpdateErrIgnored(err) {
-		klog.Infof("-----------kang--------- failed to update resource %s to %v, ignored err: %v", updater.Key(), updater.Value(), err)
 		klog.V(5).Infof("failed to update resource %s to %v, ignored err: %v", updater.Key(), updater.Value(), err)
 		return nil
 	}
@@ -229,7 +226,6 @@ func (e *ResourceUpdateExecutorImpl) update(updater ResourceUpdater) error {
 		klog.V(5).Infof("failed to update resource %s to %v, err: %v", updater.Key(), updater.Value(), err)
 		return err
 	}
-	klog.Infof("-----------kang--------- successfully update resource %s to %v, ignored err: %v", updater.Key(), updater.Value(), err)
 	klog.V(6).Infof("successfully update resource %s to %v", updater.Key(), updater.Value())
 	return nil
 }
@@ -239,23 +235,19 @@ func (e *ResourceUpdateExecutorImpl) updateByCache(updater ResourceUpdater) (boo
 		err := updater.update()
 		if err != nil && e.isUpdateErrIgnored(err) {
 			klog.V(5).Infof("failed to cacheable update resource %s to %v, ignored err: %v", updater.Key(), updater.Value(), err)
-			klog.Infof("-----------kang failed to cacheable update resource %s to %v, ignored err: %v", updater.Key(), updater.Value(), err)
 			return false, nil
 		}
 		if err != nil {
 			klog.V(5).Infof("failed to cacheable update resource %s to %v, err: %v", updater.Key(), updater.Value(), err)
-			klog.Infof("---------kang failed to cacheable update resource %s to %v, err: %v", updater.Key(), updater.Value(), err)
 			return false, err
 		}
 		updater.UpdateLastUpdateTimestamp(time.Now())
 		err = e.ResourceCache.SetDefault(updater.Key(), updater)
 		if err != nil {
 			klog.V(5).Infof("failed to SetDefault in resourceCache for resource %s, err: %v", updater.Key(), err)
-			klog.Infof("---------------kang failed to SetDefault in resourceCache for resource %s, err: %v", updater.Key(), err)
 			return true, err
 		}
 		klog.V(6).Infof("successfully cacheable update resource %s to %v", updater.Key(), updater.Value())
-		klog.Infof("--------------kang successfully cacheable update resource %s to %v", updater.Key(), updater.Value())
 		return true, nil
 	}
 	return false, nil

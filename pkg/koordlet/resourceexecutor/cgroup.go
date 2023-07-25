@@ -42,9 +42,6 @@ const ErrCgroupDir = "cgroup path or file not exist"
 
 // CgroupFileWriteIfDifferent writes the cgroup file if current value is different from the given value.
 func cgroupFileWriteIfDifferent(cgroupTaskDir string, r sysutil.Resource, value string) (bool, error) {
-	if r.ResourceType() == sysutil.CPUCFSQuotaName {
-		klog.Infof("----------kang cgroup writer value is %s, dir is %s", value, cgroupTaskDir)
-	}
 	if supported, msg := r.IsSupported(cgroupTaskDir); !supported {
 		return false, sysutil.ResourceUnsupportedErr(fmt.Sprintf("write cgroup %s failed, msg: %s", r.ResourceType(), msg))
 	}
@@ -56,9 +53,6 @@ func cgroupFileWriteIfDifferent(cgroupTaskDir string, r sysutil.Resource, value 
 	}
 
 	currentValue, currentErr := cgroupFileRead(cgroupTaskDir, r)
-	if r.ResourceType() == sysutil.CPUCFSQuotaName {
-		klog.Infof("----------kang cgroup writer before value is %s, dir is %s", currentValue, cgroupTaskDir)
-	}
 	if currentErr != nil {
 		return false, currentErr
 	}
@@ -74,11 +68,6 @@ func cgroupFileWriteIfDifferent(cgroupTaskDir string, r sysutil.Resource, value 
 	}
 	if err := cgroupFileWrite(cgroupTaskDir, r, value); err != nil {
 		return false, err
-	}
-	if r.ResourceType() == sysutil.CPUCFSQuotaName {
-		klog.Infof("----------kang cgroup writer write success cgroup")
-		currentValue, _ := cgroupFileRead(cgroupTaskDir, r)
-		klog.Infof("----------kang cgroup writer read after write cgroup value is %s", currentValue)
 	}
 	return true, nil
 }
