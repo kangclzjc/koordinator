@@ -54,9 +54,11 @@ func (r *runtimeHook) Run(stopCh <-chan struct{}) error {
 	if err := r.server.Start(); err != nil {
 		return err
 	}
-	if err := r.nriServer.Start(); err != nil {
-		// if NRI is not enabled or container runtime not support NRI, we just skip NRI server start
-		klog.Errorf("nri runtime hook server start failed: %v", err)
+	if nri.Enabled() && r.nriServer != nil {
+		if err := r.nriServer.Start(); err != nil {
+			// if NRI is not enabled or container runtime not support NRI, we just skip NRI server start
+			klog.Errorf("nri runtime hook server start failed: %v", err)
+		}
 	}
 	//if err := r.reconciler.Run(stopCh); err != nil {
 	//	return err
@@ -91,9 +93,17 @@ func NewRuntimeHook(si statesinformer.StatesInformer, cfg *Config) (RuntimeHook,
 		Executor:            e,
 	}
 
-	nris, err := nri.NewNriServer(newServerOptions)
-	if err != nil {
-		klog.Errorf("new nri server error, %v", err)
+	var nris *nri.NriServer
+	if nri.Enabled() {
+		nriServerOptions := nri.Options{
+			PluginFailurePolicy: pluginFailurePolicy,
+			DisableStages:       getDisableStagesMap(cfg.RuntimeHookDisableStages),
+			Executor:            e,
+		}
+		nris, err = nri.NewNriServer(nriServerOptions)
+		if err != nil {
+			klog.Errorf("new nri server error, %v", err)
+		}
 	}
 
 	s, err := proxyserver.NewServer(newServerOptions)

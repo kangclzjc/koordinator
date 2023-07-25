@@ -114,6 +114,9 @@ const (
 	//
 	// BlkIOReconcile enables block I/O QoS feature of koordlet.
 	BlkIOReconcile featuregate.Feature = "BlkIOReconcile"
+
+	// owner: @kangclzjc @zwzhang0107
+	NRIHooksManager featuregate.Feature = "NRIHooksManager"
 )
 
 func init() {
@@ -139,6 +142,7 @@ var (
 		CPICollector:           {Default: false, PreRelease: featuregate.Alpha},
 		PSICollector:           {Default: false, PreRelease: featuregate.Alpha},
 		BlkIOReconcile:         {Default: false, PreRelease: featuregate.Alpha},
+		NRIHooksManager:        {Default: true, PreRelease: featuregate.Alpha},
 	}
 )
 
