@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/containerd/nri/pkg/api"
 	"github.com/containerd/nri/pkg/stub"
-	"github.com/koordinator-sh/koordinator/pkg/features"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/protocol"
@@ -86,8 +85,8 @@ func (s *NriServer) Start() error {
 }
 
 func Enabled() bool {
-	//return true
-	return features.DefaultKoordletFeatureGate.Enabled(features.NRIHooksManager)
+	return true
+	//return features.DefaultKoordletFeatureGate.Enabled(features.NRIHooksManager)
 }
 
 func (p *NriServer) Configure(config, runtime, version string) (stub.EventMask, error) {

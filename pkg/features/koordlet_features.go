@@ -116,6 +116,9 @@ const (
 	BlkIOReconcile featuregate.Feature = "BlkIOReconcile"
 
 	// owner: @kangclzjc @zwzhang0107
+	// alpha: v1.4
+
+	// NRIHooksManager enables NRI hooks Manager
 	NRIHooksManager featuregate.Feature = "NRIHooksManager"
 )
 
