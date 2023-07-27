@@ -8,8 +8,10 @@ import (
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/protocol"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
 	rmconfig "github.com/koordinator-sh/koordinator/pkg/runtimeproxy/config"
 	"k8s.io/klog/v2"
+	"path/filepath"
 	"sigs.k8s.io/yaml"
 	"strings"
 )
@@ -57,6 +59,7 @@ var (
 func NewNriServer(opt Options) (*NriServer, error) {
 	opts = append(opts, stub.WithPluginName(pluginName))
 	opts = append(opts, stub.WithPluginIdx(pluginIdx))
+	opts = append(opts, stub.WithSocketPath(filepath.Join(system.Conf.VarRunRootDir, "nri/nri.sock")))
 	p := &NriServer{options: opt}
 	if p.mask, err = api.ParseEventMask(events); err != nil {
 		klog.Errorf("failed to parse events: %v", err)
