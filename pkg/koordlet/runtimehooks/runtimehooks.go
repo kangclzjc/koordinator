@@ -18,6 +18,7 @@ package runtimehooks
 
 import (
 	"fmt"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/nri"
 
 	"k8s.io/klog/v2"
 
@@ -42,6 +43,7 @@ type RuntimeHook interface {
 type runtimeHook struct {
 	statesInformer statesinformer.StatesInformer
 	server         proxyserver.Server
+	nriServer      *nri.NriServer
 	reconciler     reconciler.Reconciler
 	executor       resourceexecutor.ResourceUpdateExecutor
 }
@@ -52,9 +54,15 @@ func (r *runtimeHook) Run(stopCh <-chan struct{}) error {
 	if err := r.server.Start(); err != nil {
 		return err
 	}
-	if err := r.reconciler.Run(stopCh); err != nil {
-		return err
+	if nri.Enabled() && r.nriServer != nil {
+		if err := r.nriServer.Start(); err != nil {
+			// if NRI is not enabled or container runtime not support NRI, we just skip NRI server start
+			klog.Errorf("nri runtime hook server start failed: %v", err)
+		}
 	}
+	//if err := r.reconciler.Run(stopCh); err != nil {
+	//	return err
+	//}
 	if err := r.server.Register(); err != nil {
 		return err
 	}
@@ -84,6 +92,20 @@ func NewRuntimeHook(si statesinformer.StatesInformer, cfg *Config) (RuntimeHook,
 		DisableStages:       getDisableStagesMap(cfg.RuntimeHookDisableStages),
 		Executor:            e,
 	}
+
+	var nris *nri.NriServer
+	if nri.Enabled() {
+		nriServerOptions := nri.Options{
+			PluginFailurePolicy: pluginFailurePolicy,
+			DisableStages:       getDisableStagesMap(cfg.RuntimeHookDisableStages),
+			Executor:            e,
+		}
+		nris, err = nri.NewNriServer(nriServerOptions)
+		if err != nil {
+			klog.Errorf("new nri server error, %v", err)
+		}
+	}
+
 	s, err := proxyserver.NewServer(newServerOptions)
 	newReconcilerOptions := reconciler.Options{
 		StatesInformer: si,
@@ -100,6 +122,7 @@ func NewRuntimeHook(si statesinformer.StatesInformer, cfg *Config) (RuntimeHook,
 	r := &runtimeHook{
 		statesInformer: si,
 		server:         s,
+		nriServer:      nris,
 		reconciler:     reconciler.NewReconciler(newReconcilerOptions),
 		executor:       e,
 	}
