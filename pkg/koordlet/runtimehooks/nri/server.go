@@ -75,10 +75,15 @@ func NewNriServer(opt Options) (*NriServer, error) {
 
 func (s *NriServer) Start() error {
 	go func() {
-		klog.Info("-------nri start-----------")
-		err := s.stub.Run(context.Background())
-		if err != nil {
-			klog.Errorf("plugin exited with error %v", err)
+		if s.stub != nil {
+			err := s.stub.Run(context.Background())
+			if err != nil {
+				klog.Errorf("plugin exited with error %v", err)
+			} else {
+				klog.Info("nri server start")
+			}
+		} else {
+			klog.Error("nri stub is new")
 		}
 	}()
 	return nil

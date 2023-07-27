@@ -82,7 +82,9 @@ func (c *ContainerRequest) FromNri(pod *api.PodSandbox, container *api.Container
 	envs := make(map[string]string)
 	for _, e := range container.GetEnv() {
 		k, v := splitEnvVar(e)
-		envs[k] = v
+		if k != "" && v != "" {
+			envs[k] = v
+		}
 	}
 	c.ContainerEnvs = envs
 
