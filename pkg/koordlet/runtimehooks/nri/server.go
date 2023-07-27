@@ -55,22 +55,19 @@ var (
 )
 
 func NewNriServer(opt Options) (*NriServer, error) {
-	if Enabled() {
-		opts = append(opts, stub.WithPluginName(pluginName))
-		opts = append(opts, stub.WithPluginIdx(pluginIdx))
-		p := &NriServer{options: opt}
-		if p.mask, err = api.ParseEventMask(events); err != nil {
-			klog.Errorf("failed to parse events: %v", err)
-		}
-		cfg.Events = strings.Split(events, ",")
-
-		if p.stub, err = stub.New(p, append(opts, stub.WithOnClose(p.onClose))...); err != nil {
-			klog.Errorf("failed to create plugin stub: %v", err)
-		}
-
-		return p, err
+	opts = append(opts, stub.WithPluginName(pluginName))
+	opts = append(opts, stub.WithPluginIdx(pluginIdx))
+	p := &NriServer{options: opt}
+	if p.mask, err = api.ParseEventMask(events); err != nil {
+		klog.Errorf("failed to parse events: %v", err)
 	}
-	return nil, nil
+	cfg.Events = strings.Split(events, ",")
+
+	if p.stub, err = stub.New(p, append(opts, stub.WithOnClose(p.onClose))...); err != nil {
+		klog.Errorf("failed to create plugin stub: %v", err)
+	}
+
+	return p, err
 }
 
 func (s *NriServer) Start() error {
@@ -78,20 +75,15 @@ func (s *NriServer) Start() error {
 		if s.stub != nil {
 			err := s.stub.Run(context.Background())
 			if err != nil {
-				klog.Errorf("plugin exited with error %v", err)
+				klog.Errorf("nri server exited with error %v", err)
 			} else {
 				klog.Info("nri server start")
 			}
 		} else {
-			klog.Error("nri stub is new")
+			klog.Error("nri stub is nil")
 		}
 	}()
 	return nil
-}
-
-func Enabled() bool {
-	return true
-	//return features.DefaultKoordletFeatureGate.Enabled(features.NRIHooksManager)
 }
 
 func (p *NriServer) Configure(config, runtime, version string) (stub.EventMask, error) {
@@ -114,12 +106,14 @@ func (p *NriServer) Configure(config, runtime, version string) (stub.EventMask, 
 }
 
 func (p *NriServer) Synchronize(pods []*api.PodSandbox, containers []*api.Container) ([]*api.ContainerUpdate, error) {
+	// todo: update existed containers configure
 	return nil, nil
 }
 
 func (p *NriServer) RunPodSandbox(pod *api.PodSandbox) error {
 	podCtx := &protocol.PodContext{}
 	podCtx.FromNri(pod)
+	// todo: return error or bypass error based on PluginFailurePolicy
 	err := hooks.RunHooks(p.options.PluginFailurePolicy, rmconfig.PreRunPodSandbox, podCtx)
 	if err != nil {
 		klog.Errorf("hooks run error: %v", err)
@@ -131,6 +125,7 @@ func (p *NriServer) RunPodSandbox(pod *api.PodSandbox) error {
 func (p *NriServer) CreateContainer(pod *api.PodSandbox, container *api.Container) (*api.ContainerAdjustment, []*api.ContainerUpdate, error) {
 	containerCtx := &protocol.ContainerContext{}
 	containerCtx.FromNri(pod, container)
+	// todo: return error or bypass error based on PluginFailurePolicy
 	err := hooks.RunHooks(p.options.PluginFailurePolicy, rmconfig.PreCreateContainer, containerCtx)
 	if err != nil {
 		klog.Errorf("run hooks error: %v", err)
@@ -164,6 +159,7 @@ func (p *NriServer) CreateContainer(pod *api.PodSandbox, container *api.Containe
 func (p *NriServer) UpdateContainer(pod *api.PodSandbox, container *api.Container) ([]*api.ContainerUpdate, error) {
 	containerCtx := &protocol.ContainerContext{}
 	containerCtx.FromNri(pod, container)
+	// todo: return error or bypass error based on PluginFailurePolicy
 	err := hooks.RunHooks(p.options.PluginFailurePolicy, rmconfig.PreCreateContainer, containerCtx)
 	if err != nil {
 		klog.Errorf("run hooks error: %v", err)
