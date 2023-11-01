@@ -68,38 +68,27 @@ Koordinator support RDT configuration and adjustment by config map based on clas
 
 - RDT configure policy
 - Schedule workload based on RDT resource
+- AMD ResCtl support
 
 ## Proposal
 
-We will implement RDT related function as a runtime hook plugin. It will still watch ConfigMap.
-
-[PlantUML](http://plantuml.com) is the preferred tool to generate diagrams,
-place your `.plantuml` files under `images/` and run `make diagrams` from the docs folder.
+We will implement RDT related function as a runtime hook plugin. RDT runtime hook plugin will still watch a configmap and generate UpdateContainer CRI request to dynamically adjust RDT configuration. In the meanwhile, RDT runtime hook plugin will create RDT group and monitor group first for each class during Pod RunPodSandBox and modify OCI spec for pod and container. We rely on runc to make RDT configuration work. A. We will collect RDT resource metrics and report them to koordlet.
 
 ### User Stories
 
-- Detail the things that people will be able to do if this proposal is implemented.
-- Include as much detail as possible so that people can understand the "how" of the system.
-- The goal here is to make this feel real for users without getting bogged down.
-
 #### Story 1
-
+As a cluster administer, I want to apply and adjust RDT QoS class configuration during runtime. 
 #### Story 2
+As a user, I want to guarantee and adjust my workload's RDT resource during runtime.
+#### Story 3
+As a cluster administer, I want to monitor cluster RDT resource usage.
 
 ### Requirements (Optional)
-
-Some authors may wish to use requirements in addition to user stories.
-Technical requirements should be derived from user stories, and provide a trace from
-use case to design, implementation and test case. Requirements can be prioritised
-using the MoSCoW (MUST, SHOULD, COULD, WON'T) criteria.
-
-The difference between goals and requirements is that between an executive summary
-and the body of a document. Each requirement should be in support of a goal,
-but narrowly scoped in a way that is verifiable or ideally - testable.
+Need Koordinator to upgrade to 1.3.0+
 
 #### Functional Requirements
 
-Functional requirements are the properties that this design should include.
+RDT runtime hook plugin should support all existing functionalities by current RDT plugin
 
 ##### FR1
 
@@ -115,11 +104,42 @@ considerations for performance, reliability and security.
 ##### NFR2
 
 ### Implementation Details/Notes/Constraints
+Implement a RDT runtime hook plugin.
+```go
+type plugin struct {
+  rule     *Rule
+  executor resourceexecutor.ResourceUpdateExecutor
+}
 
-- What are some important details that didn't come across above.
-- What are the caveats to the implementation?
-- Go in to as much detail as necessary here.
-- Talk about core concepts and how they releate.
+func (p *plugin) Register(op hooks.Options) {
+	
+}
+
+func (p *plugin) CreateRDTgroup(proto protocol.HooksProtocol) {
+    
+}
+
+func (p *plugin) CreateRDTMonitorgroup(proto protocol.HooksProtocol) {
+
+}
+
+func (p *plugin) SetPodResources(proto protocol.HooksProtocol) error {
+	
+}
+
+func (p *plugin) SetContainerResources(proto protocol.HooksProtocol) error { 
+	
+}
+
+func (p *plugin) GetRDTMonitor(pod Pod) RDTMetrics {
+    
+}
+
+func (p *plugin) GetRDTMonitor(group Group) RDTMetrics {
+
+}
+
+```
 
 ### Risks and Mitigations
 
@@ -130,10 +150,10 @@ considerations for performance, reliability and security.
 
 ## Alternatives
 
-The `Alternatives` section is used to highlight and record other possible approaches to delivering the value proposed by a proposal.
+RDT QoSManager Plugin is an asynchronize plugin which may not reconcile RDT resource in real time and need to iterate all task ids in pod/container periodically.
 
 ## Upgrade Strategy
-
+[cgroup_manager_linux_test.go](..%2F..%2F..%2F..%2Fgithub.com%2Fkubernetes%2Fpkg%2Fkubelet%2Fcm%2Fcgroup_manager_linux_test.go)
 If applicable, how will the component be upgraded? Make sure this is in the test plan.
 
 Consider the following in developing an upgrade strategy for this enhancement:
