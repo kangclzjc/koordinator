@@ -2,14 +2,13 @@
 title: NRI mode Resource Management
 authors:
   - "@kangclzjc"
-  - "@whu16"
-  - "@hle2"
+  - "@bowen-intel"
 reviewers:
   - "@zwzhang0107"
   - "@saintube"
   - "@hormes"
-creation-date: 2023-06-08
-last-updated: 2023-06-15
+creation-date: 2023-11-01
+last-updated: 2023-11-02
 ---
 
 # RDT enhanced
@@ -123,19 +122,19 @@ func (p *plugin) CreateRDTMonitorgroup(proto protocol.HooksProtocol) {
 
 }
 
-func (p *plugin) SetPodResources(proto protocol.HooksProtocol) error {
+func (p *plugin) SetPodRDT(proto protocol.HooksProtocol) error {
 	
 }
 
-func (p *plugin) SetContainerResources(proto protocol.HooksProtocol) error { 
+func (p *plugin) SetContainerRDT(proto protocol.HooksProtocol) error { 
 	
 }
 
-func (p *plugin) GetRDTMonitor(pod Pod) RDTMetrics {
+func (p *plugin) GetPodRDTMonitor(pod Pod) RDTMetrics {
     
 }
 
-func (p *plugin) GetRDTMonitor(group Group) RDTMetrics {
+func (p *plugin) GetGroupRDTMonitor(group Group) RDTMetrics {
 
 }
 
