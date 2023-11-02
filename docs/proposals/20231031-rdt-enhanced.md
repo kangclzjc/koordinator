@@ -103,7 +103,16 @@ considerations for performance, reliability and security.
 ##### NFR2
 
 ### Implementation Details/Notes/Constraints
-Implement a RDT runtime hook plugin.
+Implement a RDT runtime hook plugin. And we implement a RDT metrics advisor collector to collect and monitor RDT resource.
+
+runtime hook plugin 
+
+1. when plugin init, create QoS ctrl group, and it will automatically create a monitor group
+2. Subscribe RunPodSanbox, when pod with annotation like rdt.intel.com/l3=80%，give an extra ctrl group
+3. Subscribe CreateContainer, when pod withtout annotation, generate RDT oci spec, use runc to apply to resctl file system // open: will runc help create a RDT group
+4. For group level RDT config, use rule to update RDT config
+5. For pod with annotation like rdt.intel.com/l3=80%, Subscribe UpdateContainer, when update container, we will update container RDT // open: who will update this
+6. 
 ```go
 type plugin struct {
   rule     *Rule
@@ -114,11 +123,11 @@ func (p *plugin) Register(op hooks.Options) {
 	
 }
 
-func (p *plugin) CreateRDTgroup(proto protocol.HooksProtocol) {
+func (p *plugin) CreateRDTgroup(proto protocol.HooksProtocol) error {
     
 }
 
-func (p *plugin) CreateRDTMonitorgroup(proto protocol.HooksProtocol) {
+func (p *plugin) CreateRDTMonitorgroup(proto protocol.HooksProtocol) error {
 
 }
 
@@ -130,13 +139,17 @@ func (p *plugin) SetContainerRDT(proto protocol.HooksProtocol) error {
 	
 }
 
-func (p *plugin) GetPodRDTMonitor(pod Pod) RDTMetrics {
-    
+func (p *plugin) UpdateContainerRDT() error {
+	// generate a UpdateContainer CRI request.
 }
 
-func (p *plugin) GetGroupRDTMonitor(group Group) RDTMetrics {
+```
 
-}
+RDT collector
+1. collector check whether resctrl file system supported and mounted
+2. iterate all monitor group, and get class, pod -> metrics
+3. LS/PodID_XXX, BE
+```go
 
 ```
 
