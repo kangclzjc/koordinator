@@ -1,4 +1,4 @@
-<mxfile host="app.diagrams.net" modified="2023-11-10T07:15:21.077Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36" etag="AW76JchZf124T98eNHRR" version="22.1.0" type="github">
+<mxfile host="app.diagrams.net" modified="2023-11-10T07:20:43.169Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36" etag="rJLBh0wKbpiFDSITFmy3" version="22.1.0" type="github">
   <diagram name="第 1 页" id="6ppvo3OB2JOTQLogzsc_">
     <mxGraphModel dx="2021" dy="585" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
@@ -90,8 +90,11 @@
         <mxCell id="kPXF-EqfMkH5AO7zfkSI-20" value="Koordlet" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
           <mxGeometry x="270" y="615" width="60" height="30" as="geometry" />
         </mxCell>
+        <mxCell id="ZxwUxICitXkXn4A0AqkS-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="kPXF-EqfMkH5AO7zfkSI-21" target="ZxwUxICitXkXn4A0AqkS-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="kPXF-EqfMkH5AO7zfkSI-21" value="" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="290" y="670" width="380" height="240" as="geometry" />
+          <mxGeometry x="290" y="670" width="380" height="250" as="geometry" />
         </mxCell>
         <mxCell id="kPXF-EqfMkH5AO7zfkSI-22" value="BatchResource" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="1" vertex="1">
           <mxGeometry x="324" y="677.5" width="90" height="55" as="geometry" />
@@ -137,29 +140,11 @@
         <mxCell id="kPXF-EqfMkH5AO7zfkSI-35" value="Add Pod Level" style="text;html=1;strokeColor=#b85450;fillColor=#f8cecc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
           <mxGeometry x="9.999999999999996" y="670" width="125" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="kPXF-EqfMkH5AO7zfkSI-36" value="RDT Metric Collector" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
-          <mxGeometry x="410" y="920" width="120" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="kPXF-EqfMkH5AO7zfkSI-37" style="edgeStyle=none;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;fontSize=16;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="kPXF-EqfMkH5AO7zfkSI-36" target="kPXF-EqfMkH5AO7zfkSI-41" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="576" y="950" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
         <mxCell id="kPXF-EqfMkH5AO7zfkSI-38" value="Resctrl File System" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#3F8624;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.file_system;" parent="1" vertex="1">
           <mxGeometry x="431" y="1240" width="78" height="73" as="geometry" />
         </mxCell>
         <mxCell id="kPXF-EqfMkH5AO7zfkSI-39" value="&lt;div style=&quot;text-align: left; font-size: 16px;&quot;&gt;&lt;span style=&quot;background-color: initial; font-size: 16px;&quot;&gt;Opens:&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left; font-size: 16px;&quot;&gt;&lt;span style=&quot;background-color: initial; font-size: 16px;&quot;&gt;1. runc help to create dir&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left; font-size: 16px;&quot;&gt;&lt;span style=&quot;background-color: initial; font-size: 16px;&quot;&gt;2. who will trigger rdt update&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left; font-size: 16px;&quot;&gt;&lt;span style=&quot;background-color: initial; font-size: 16px;&quot;&gt;3. how to collect based on monitor group or pod ?&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left; font-size: 16px;&quot;&gt;&lt;span style=&quot;background-color: initial; font-size: 16px;&quot;&gt;4. modify rdt by runc or koordlet&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left; font-size: 16px;&quot;&gt;&lt;span style=&quot;background-color: initial; font-size: 16px;&quot;&gt;5. one user specify monitor group containes mutilple pods (optional)&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left; font-size: 16px;&quot;&gt;&lt;span style=&quot;background-color: initial; font-size: 16px;&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left; font-size: 16px;&quot;&gt;&lt;span style=&quot;background-color: initial; font-size: 16px;&quot;&gt;3&amp;amp;5 monitor policy&lt;/span&gt;&lt;/div&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;" parent="1" vertex="1">
           <mxGeometry x="769" y="555" width="560" height="200" as="geometry" />
-        </mxCell>
-        <mxCell id="kPXF-EqfMkH5AO7zfkSI-40" style="edgeStyle=none;html=1;fontSize=16;entryX=-0.002;entryY=0.442;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" source="kPXF-EqfMkH5AO7zfkSI-41" target="kPXF-EqfMkH5AO7zfkSI-42" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="849.9999999999995" y="880" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="kPXF-EqfMkH5AO7zfkSI-41" value="store" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fontSize=16;fillColor=none;" parent="1" vertex="1">
-          <mxGeometry x="541" y="860" width="69" height="40" as="geometry" />
         </mxCell>
         <mxCell id="kPXF-EqfMkH5AO7zfkSI-42" value="Store可以作为一个map，由runtime hook和metric collector 共享&lt;br&gt;ctrl_group_id -&amp;gt; ctrl_group(class/pod/container info, group 具体信息)&lt;br&gt;mon_group_id -&amp;gt; mon_group(class/pod/container info, group 具体信息)" style="whiteSpace=wrap;html=1;shape=mxgraph.basic.document;fontSize=16;fillColor=none;" parent="1" vertex="1">
           <mxGeometry x="810" y="820" width="519" height="135" as="geometry" />
@@ -195,19 +180,22 @@
           <mxGeometry x="1575" y="198" width="170" height="30" as="geometry" />
         </mxCell>
         <mxCell id="ZxwUxICitXkXn4A0AqkS-1" value="RDT engine" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
-          <mxGeometry x="325" y="1010" width="325" height="150" as="geometry" />
+          <mxGeometry x="317.5" y="1010" width="325" height="150" as="geometry" />
         </mxCell>
         <mxCell id="ZxwUxICitXkXn4A0AqkS-2" value="Configuration" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="340" y="1021.5" width="120" height="40" as="geometry" />
+          <mxGeometry x="340" y="1020" width="100" height="40" as="geometry" />
         </mxCell>
         <mxCell id="ZxwUxICitXkXn4A0AqkS-3" value="Policy" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="509" y="1021.5" width="120" height="40" as="geometry" />
+          <mxGeometry x="540" y="1020" width="89" height="41.5" as="geometry" />
         </mxCell>
         <mxCell id="ZxwUxICitXkXn4A0AqkS-4" value="RDT Control Engine" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="340" y="1100" width="120" height="40" as="geometry" />
+          <mxGeometry x="340" y="1100" width="100" height="40" as="geometry" />
         </mxCell>
         <mxCell id="ZxwUxICitXkXn4A0AqkS-5" value="Monitor" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="509" y="1100" width="120" height="40" as="geometry" />
+          <mxGeometry x="540" y="1100" width="89" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="kPXF-EqfMkH5AO7zfkSI-41" value="store" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fontSize=16;fillColor=none;" parent="1" vertex="1">
+          <mxGeometry x="453" y="1110" width="69" height="40" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
