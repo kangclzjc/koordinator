@@ -1,4 +1,4 @@
-<mxfile host="app.diagrams.net" modified="2023-11-07T09:26:40.527Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36" etag="2xfn7-fHhxG2oylJqkyw" version="22.0.8" type="github">
+<mxfile host="app.diagrams.net" modified="2023-11-10T07:15:21.077Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36" etag="AW76JchZf124T98eNHRR" version="22.1.0" type="github">
   <diagram name="第 1 页" id="6ppvo3OB2JOTQLogzsc_">
     <mxGraphModel dx="2021" dy="585" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
@@ -74,7 +74,7 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="kPXF-EqfMkH5AO7zfkSI-16" value="" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="260" y="600" width="420" height="390" as="geometry" />
+          <mxGeometry x="260" y="600" width="420" height="620" as="geometry" />
         </mxCell>
         <mxCell id="kPXF-EqfMkH5AO7zfkSI-17" style="edgeStyle=none;html=1;exitX=0.75;exitY=0;exitDx=0;exitDy=0;entryX=0.75;entryY=1;entryDx=0;entryDy=0;" parent="1" source="kPXF-EqfMkH5AO7zfkSI-19" target="kPXF-EqfMkH5AO7zfkSI-12" edge="1">
           <mxGeometry relative="1" as="geometry" />
@@ -148,7 +148,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="kPXF-EqfMkH5AO7zfkSI-38" value="Resctrl File System" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#3F8624;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.file_system;" parent="1" vertex="1">
-          <mxGeometry x="430" y="1040" width="78" height="73" as="geometry" />
+          <mxGeometry x="431" y="1240" width="78" height="73" as="geometry" />
         </mxCell>
         <mxCell id="kPXF-EqfMkH5AO7zfkSI-39" value="&lt;div style=&quot;text-align: left; font-size: 16px;&quot;&gt;&lt;span style=&quot;background-color: initial; font-size: 16px;&quot;&gt;Opens:&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left; font-size: 16px;&quot;&gt;&lt;span style=&quot;background-color: initial; font-size: 16px;&quot;&gt;1. runc help to create dir&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left; font-size: 16px;&quot;&gt;&lt;span style=&quot;background-color: initial; font-size: 16px;&quot;&gt;2. who will trigger rdt update&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left; font-size: 16px;&quot;&gt;&lt;span style=&quot;background-color: initial; font-size: 16px;&quot;&gt;3. how to collect based on monitor group or pod ?&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left; font-size: 16px;&quot;&gt;&lt;span style=&quot;background-color: initial; font-size: 16px;&quot;&gt;4. modify rdt by runc or koordlet&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left; font-size: 16px;&quot;&gt;&lt;span style=&quot;background-color: initial; font-size: 16px;&quot;&gt;5. one user specify monitor group containes mutilple pods (optional)&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left; font-size: 16px;&quot;&gt;&lt;span style=&quot;background-color: initial; font-size: 16px;&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left; font-size: 16px;&quot;&gt;&lt;span style=&quot;background-color: initial; font-size: 16px;&quot;&gt;3&amp;amp;5 monitor policy&lt;/span&gt;&lt;/div&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;" parent="1" vertex="1">
           <mxGeometry x="769" y="555" width="560" height="200" as="geometry" />
@@ -168,7 +168,7 @@
           <mxGeometry x="1035" y="335" width="210" height="90" as="geometry" />
         </mxCell>
         <mxCell id="kPXF-EqfMkH5AO7zfkSI-44" value="map: group_id -&amp;gt; cgroup_path" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=16;" parent="1" vertex="1">
-          <mxGeometry x="560" y="1090" width="240" height="30" as="geometry" />
+          <mxGeometry x="880" y="1061.5" width="240" height="30" as="geometry" />
         </mxCell>
         <mxCell id="kPXF-EqfMkH5AO7zfkSI-45" value="&lt;ol&gt;&lt;li&gt;RDT runtime hook init的时候根据configmap, 建立class level的ctrl group和monitor group&lt;/li&gt;&lt;li&gt;RDT runtime hook subscribe RunPodSandbox, CreateContainer, UpdateContainer, RemovePodSandbox&lt;/li&gt;&lt;ul&gt;&lt;li&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;RunPodSandbox&amp;nbsp;&lt;/span&gt;&lt;/li&gt;&lt;ul&gt;&lt;li&gt;if this pod belongs to GA, then create extra pod monitor group for the GA pod (runc not support ?)&lt;/li&gt;&lt;li&gt;else if this pod has specific annotation like schemata, then create extra pod ctrl group and monitor group for this pod by runc&lt;/li&gt;&lt;li&gt;else do nothing&lt;/li&gt;&lt;/ul&gt;&lt;li&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;&amp;nbsp;CreateContainer&lt;/span&gt;&lt;br&gt;&lt;/li&gt;&lt;ul&gt;&lt;li&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;if this pod belongs to GA, then put the taskid into GA group ctrl group (runc)&lt;/span&gt;&lt;/li&gt;&lt;li&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;else if this pod has specific annotation like schemata, then put the taskid into pod&#39;s ctrl group&lt;/span&gt;&lt;/li&gt;&lt;li&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;else put the taskid into BE group ctrl group&lt;/span&gt;&lt;/li&gt;&lt;/ul&gt;&lt;li&gt;UpdateContainer&lt;/li&gt;&lt;ul&gt;&lt;li&gt;if this pod has specific annotation like schemata, then update the pod&#39;s schemata(maybe runc not support, need check)&lt;br&gt;&lt;/li&gt;&lt;li&gt;&lt;font color=&quot;#ff0000&quot;&gt;Change Pod&#39;s class level ?&lt;/font&gt;&lt;/li&gt;&lt;/ul&gt;&lt;li&gt;RemovePodSandbox&lt;/li&gt;&lt;ul&gt;&lt;li&gt;if this pod has specific annotations like schemata, then delete this pod ctrl and monitor group&lt;/li&gt;&lt;/ul&gt;&lt;/ul&gt;&lt;/ol&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=16;" parent="1" vertex="1">
           <mxGeometry x="1420" y="410" width="1020" height="330" as="geometry" />
@@ -176,10 +176,10 @@
         <mxCell id="kPXF-EqfMkH5AO7zfkSI-46" value="CTRL group:&lt;br&gt;GA, BE, LS, LSR, ..., Pod1, Pod2, ...&lt;br&gt;Monitor group:&lt;br&gt;GA 组里per pod 建立单独monitor group&lt;br&gt;BE 组里共享一个monitor group" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=16;fontColor=#000000;" parent="1" vertex="1">
           <mxGeometry x="1360" y="35" width="300" height="110" as="geometry" />
         </mxCell>
-        <mxCell id="h-_Vx80LjxqluuEnirVX-1" value="collect metrics&lt;br&gt;GA, BE, LS, LSR, .. 每个class的monitor group data&lt;br&gt;Pod1, Pod2, ... 的monitor group data&lt;br&gt;对于GA 组里的每个pod 由于是以podid 建立的monior group，可以直接拿到podid 对应的group 信息" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+        <mxCell id="h-_Vx80LjxqluuEnirVX-1" value="collect metrics&lt;br&gt;GA, BE, LS, LSR, .. 每个class的monitor group data&lt;br&gt;Pod1, Pod2, ... 的monitor group data&lt;br&gt;对于GA 组里的每个pod 由于是以podid 建立的monior group，可以直接拿到podid 对应的group 信息" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="1" vertex="1">
           <mxGeometry x="1745" y="55" width="550" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="h-_Vx80LjxqluuEnirVX-3" value="" style="curved=1;endArrow=classic;html=1;rounded=0;" edge="1" parent="1">
+        <mxCell id="h-_Vx80LjxqluuEnirVX-3" value="" style="curved=1;endArrow=classic;html=1;rounded=0;" parent="1" edge="1">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="1610" y="70" as="sourcePoint" />
             <mxPoint x="1710" y="210" as="targetPoint" />
@@ -191,8 +191,23 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="h-_Vx80LjxqluuEnirVX-4" value="ctrl group 以pod id 为closid" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+        <mxCell id="h-_Vx80LjxqluuEnirVX-4" value="ctrl group 以pod id 为closid" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="1" vertex="1">
           <mxGeometry x="1575" y="198" width="170" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ZxwUxICitXkXn4A0AqkS-1" value="RDT engine" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="325" y="1010" width="325" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="ZxwUxICitXkXn4A0AqkS-2" value="Configuration" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="340" y="1021.5" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ZxwUxICitXkXn4A0AqkS-3" value="Policy" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="509" y="1021.5" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ZxwUxICitXkXn4A0AqkS-4" value="RDT Control Engine" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="340" y="1100" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ZxwUxICitXkXn4A0AqkS-5" value="Monitor" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="509" y="1100" width="120" height="40" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
