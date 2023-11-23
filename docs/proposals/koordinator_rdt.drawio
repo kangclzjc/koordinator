@@ -1,4 +1,4 @@
-<mxfile host="app.diagrams.net" modified="2023-11-23T02:56:29.119Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36" etag="O0fRrBYl9KN_DKUllySj" version="22.1.3" type="github" pages="9">
+<mxfile host="app.diagrams.net" modified="2023-11-23T03:43:34.554Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36" etag="57P8lnbiEEZpGTe7n4d8" version="22.1.3" type="github" pages="9">
   <diagram name="第 1 页" id="6ppvo3OB2JOTQLogzsc_">
     <mxGraphModel dx="1868" dy="900" grid="0" gridSize="10" guides="0" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
@@ -1392,6 +1392,230 @@
         </mxCell>
         <mxCell id="SQstpheXrS02Xf_xOzL7-21" value="const (&lt;br&gt;&lt;blockquote style=&quot;margin: 0 0 0 40px; border: none; padding: 0px;&quot;&gt;&#x9;podAdded internalEventType = iota&lt;br&gt;&#x9;podDeleted&lt;br&gt;&#x9;containerAdded&lt;br&gt;&#x9;containerDeleted&lt;/blockquote&gt;)" style="text;whiteSpace=wrap;html=1;" vertex="1" parent="1">
           <mxGeometry x="800" y="280" width="330" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;curved=0;" edge="1" parent="1" source="SQstpheXrS02Xf_xOzL7-22" target="SQstpheXrS02Xf_xOzL7-23">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="970" y="840" />
+              <mxPoint x="970" y="840" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-25" value="NewStatesInformer" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="SQstpheXrS02Xf_xOzL7-24">
+          <mxGeometry x="0.0682" y="3" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-51" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;curved=0;" edge="1" parent="1" source="SQstpheXrS02Xf_xOzL7-22" target="SQstpheXrS02Xf_xOzL7-23">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="950" y="1070" />
+              <mxPoint x="950" y="1070" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-52" value="Run" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="SQstpheXrS02Xf_xOzL7-51">
+          <mxGeometry x="-0.0103" y="1" relative="1" as="geometry">
+            <mxPoint x="1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-22" value="Koordlet" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};" vertex="1" parent="1">
+          <mxGeometry x="800" y="730" width="100" height="590" as="geometry" />
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-27" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;curved=0;" edge="1" parent="1" source="SQstpheXrS02Xf_xOzL7-23" target="SQstpheXrS02Xf_xOzL7-26">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1150" y="870" />
+              <mxPoint x="1150" y="870" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-28" value="NewPodsInformer" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="SQstpheXrS02Xf_xOzL7-27">
+          <mxGeometry x="0.2222" y="3" relative="1" as="geometry">
+            <mxPoint x="1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-53" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;curved=0;" edge="1" parent="1" source="SQstpheXrS02Xf_xOzL7-23" target="SQstpheXrS02Xf_xOzL7-48">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1110" y="1100" />
+              <mxPoint x="1110" y="1100" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-54" value="Start" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="SQstpheXrS02Xf_xOzL7-53">
+          <mxGeometry x="0.1037" relative="1" as="geometry">
+            <mxPoint x="1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-57" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;curved=0;" edge="1" parent="1" source="SQstpheXrS02Xf_xOzL7-23" target="SQstpheXrS02Xf_xOzL7-26">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1170" y="1230" />
+              <mxPoint x="1170" y="1230" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-58" value="Start" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="SQstpheXrS02Xf_xOzL7-57">
+          <mxGeometry x="0.3537" y="-1" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-23" value="StatesInformer" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};" vertex="1" parent="1">
+          <mxGeometry x="1000" y="730" width="70" height="590" as="geometry" />
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-30" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;curved=0;" edge="1" parent="1" source="SQstpheXrS02Xf_xOzL7-26" target="SQstpheXrS02Xf_xOzL7-29">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1360" y="900" />
+              <mxPoint x="1360" y="900" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-31" value="NewPleg" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="SQstpheXrS02Xf_xOzL7-30">
+          <mxGeometry x="0.0335" y="2" relative="1" as="geometry">
+            <mxPoint x="1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-59" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;curved=0;" edge="1" parent="1" source="SQstpheXrS02Xf_xOzL7-26" target="SQstpheXrS02Xf_xOzL7-29">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1350" y="1260" />
+              <mxPoint x="1350" y="1260" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-60" value="AddHandler" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="SQstpheXrS02Xf_xOzL7-59">
+          <mxGeometry x="-0.1395" y="-2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-65" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;curved=0;" edge="1" parent="1" source="SQstpheXrS02Xf_xOzL7-26" target="SQstpheXrS02Xf_xOzL7-48">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1250" y="1430" />
+              <mxPoint x="1250" y="1430" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-66" value="SendCallback Event" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="SQstpheXrS02Xf_xOzL7-65">
+          <mxGeometry x="-0.0041" y="-3" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-67" value="Run" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;curved=0;" edge="1" parent="1" source="SQstpheXrS02Xf_xOzL7-26" target="SQstpheXrS02Xf_xOzL7-29">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1360" y="1480" />
+              <mxPoint x="1360" y="1480" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-26" value="PodsInformer" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};" vertex="1" parent="1">
+          <mxGeometry x="1260" y="730" width="81" height="890" as="geometry" />
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-61" value="" style="html=1;points=[[0,0,0,0,5],[0,1,0,0,-5],[1,0,0,0,5],[1,1,0,0,-5]];perimeter=orthogonalPerimeter;outlineConnect=0;targetShapes=umlLifeline;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};" vertex="1" parent="SQstpheXrS02Xf_xOzL7-26">
+          <mxGeometry x="54" y="600" width="10" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-62" value="syncKubeletLoop" style="html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;edgeStyle=orthogonalEdgeStyle;curved=0;rounded=0;" edge="1" target="SQstpheXrS02Xf_xOzL7-61" parent="SQstpheXrS02Xf_xOzL7-26">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="59" y="580" as="sourcePoint" />
+            <Array as="points">
+              <mxPoint x="89" y="610" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-63" value="" style="html=1;points=[[0,0,0,0,5],[0,1,0,0,-5],[1,0,0,0,5],[1,1,0,0,-5]];perimeter=orthogonalPerimeter;outlineConnect=0;targetShapes=umlLifeline;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};" vertex="1" parent="SQstpheXrS02Xf_xOzL7-26">
+          <mxGeometry x="49" y="680" width="10" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-64" value="Forever running and when podCreate event coming, syncpods, handle PodCreated chan" style="html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;edgeStyle=orthogonalEdgeStyle;curved=0;rounded=0;" edge="1" target="SQstpheXrS02Xf_xOzL7-63" parent="SQstpheXrS02Xf_xOzL7-26">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="54" y="660" as="sourcePoint" />
+            <Array as="points">
+              <mxPoint x="84" y="690" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-42" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;curved=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1419.5" y="980" as="sourcePoint" />
+            <mxPoint x="1609.5" y="980" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1520" y="980" />
+              <mxPoint x="1520" y="980" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-43" value="NewWatcher" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="SQstpheXrS02Xf_xOzL7-42">
+          <mxGeometry x="-0.1" y="-1" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-29" value="Pleg" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};" vertex="1" parent="1">
+          <mxGeometry x="1370" y="730" width="100" height="1060" as="geometry" />
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-44" value="" style="html=1;points=[[0,0,0,0,5],[0,1,0,0,-5],[1,0,0,0,5],[1,1,0,0,-5]];perimeter=orthogonalPerimeter;outlineConnect=0;targetShapes=umlLifeline;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};" vertex="1" parent="SQstpheXrS02Xf_xOzL7-29">
+          <mxGeometry x="45" y="220" width="10" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-45" value="NewPodWatcher &lt;br&gt;&amp;amp;&amp;amp; NewContainerWatcher" style="html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;edgeStyle=orthogonalEdgeStyle;curved=0;rounded=0;" edge="1" target="SQstpheXrS02Xf_xOzL7-44" parent="SQstpheXrS02Xf_xOzL7-29">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="50" y="200" as="sourcePoint" />
+            <Array as="points">
+              <mxPoint x="80" y="230" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-68" value="" style="html=1;points=[[0,0,0,0,5],[0,1,0,0,-5],[1,0,0,0,5],[1,1,0,0,-5]];perimeter=orthogonalPerimeter;outlineConnect=0;targetShapes=umlLifeline;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};" vertex="1" parent="SQstpheXrS02Xf_xOzL7-29">
+          <mxGeometry x="40" y="800" width="10" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-69" value="Forever run EventHandler, hand pod/container events chan, like OnPodAdd, OnPodDel, and then call OnPodADDFunc, currently push PodCreated Event to PodCreated Chan" style="html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;edgeStyle=orthogonalEdgeStyle;curved=0;rounded=0;" edge="1" target="SQstpheXrS02Xf_xOzL7-68" parent="SQstpheXrS02Xf_xOzL7-29">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="45" y="780" as="sourcePoint" />
+            <Array as="points">
+              <mxPoint x="75" y="810" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-70" value="" style="html=1;points=[[0,0,0,0,5],[0,1,0,0,-5],[1,0,0,0,5],[1,1,0,0,-5]];perimeter=orthogonalPerimeter;outlineConnect=0;targetShapes=umlLifeline;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};" vertex="1" parent="SQstpheXrS02Xf_xOzL7-29">
+          <mxGeometry x="45" y="900" width="10" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-71" value="Forever run and handle Inotify Event, transfer DirEvent to Pod/Contaienr Events, and push them to&amp;nbsp; Pod Events chan" style="html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;edgeStyle=orthogonalEdgeStyle;curved=0;rounded=0;" edge="1" target="SQstpheXrS02Xf_xOzL7-70" parent="SQstpheXrS02Xf_xOzL7-29">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="50" y="880" as="sourcePoint" />
+            <Array as="points">
+              <mxPoint x="80" y="910" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-72" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;curved=0;" edge="1" parent="1" source="SQstpheXrS02Xf_xOzL7-37" target="SQstpheXrS02Xf_xOzL7-29">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1520" y="1700" />
+              <mxPoint x="1520" y="1700" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-73" value="Dir Event" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="SQstpheXrS02Xf_xOzL7-72">
+          <mxGeometry x="-0.0053" y="-1" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-37" value="Inotify" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};" vertex="1" parent="1">
+          <mxGeometry x="1560" y="730" width="100" height="1060" as="geometry" />
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-48" value="CallBackRunner" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};" vertex="1" parent="1">
+          <mxGeometry x="1130" y="730" width="100" height="880" as="geometry" />
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-55" value="" style="html=1;points=[[0,0,0,0,5],[0,1,0,0,-5],[1,0,0,0,5],[1,1,0,0,-5]];perimeter=orthogonalPerimeter;outlineConnect=0;targetShapes=umlLifeline;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};" vertex="1" parent="SQstpheXrS02Xf_xOzL7-48">
+          <mxGeometry x="40" y="399" width="10" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="SQstpheXrS02Xf_xOzL7-56" value="forever running and callback" style="html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;edgeStyle=orthogonalEdgeStyle;curved=0;rounded=0;" edge="1" target="SQstpheXrS02Xf_xOzL7-55" parent="SQstpheXrS02Xf_xOzL7-48">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="45" y="379" as="sourcePoint" />
+            <Array as="points">
+              <mxPoint x="75" y="409" />
+            </Array>
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>
