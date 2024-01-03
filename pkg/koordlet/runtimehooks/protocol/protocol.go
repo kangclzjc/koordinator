@@ -71,6 +71,12 @@ var HooksProtocolBuilder = hooksProtocolBuilder{
 	},
 }
 
+type Resctrl struct {
+	Schemata string
+	Hook     string
+	Closid   string
+}
+
 type Resources struct {
 	// origin resources
 	CPUShares   *int64
@@ -79,7 +85,8 @@ type Resources struct {
 	MemoryLimit *int64
 
 	// extended resources
-	CPUBvt *int64
+	CPUBvt  *int64
+	Resctrl *Resctrl
 }
 
 func (r *Resources) IsOriginResSet() bool {
