@@ -27,7 +27,6 @@ type RDTEngine struct {
 
 func (R RDTEngine) Rebuild() {
 	//TODO implement me
-	panic("implement me")
 }
 
 func (R RDTEngine) GetCurrentCtrlGroups() map[string]Resctrl {

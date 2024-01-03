@@ -29,12 +29,26 @@ import (
 )
 
 const (
-	name        = "Resctrl"
-	description = "set resctrl for class/pod"
+	// LSRResctrlGroup is the name of LSR resctrl group
+	LSRResctrlGroup = "LSR"
+	// LSResctrlGroup is the name of LS resctrl group
+	LSResctrlGroup = "LS"
+	// BEResctrlGroup is the name of BE resctrl group
+	BEResctrlGroup = "BE"
+	// UnknownResctrlGroup is the resctrl group which is unknown to reconcile
+	UnknownResctrlGroup = "Unknown"
+	name                = "Resctrl"
+	description         = "set resctrl for class/pod"
 
 	ruleNameForNodeSLO  = name + " (nodeSLO)"
 	ruleNameForNodeMeta = name + " (nodeMeta)"
 	RDT                 = true
+	Anno                = "node.koordinator.sh/resctrl"
+)
+
+var (
+	// resctrlGroupList is the list of resctrl groups to be reconcile
+	resctrlGroupList = []string{LSRResctrlGroup, LSResctrlGroup, BEResctrlGroup}
 )
 
 type plugin struct {
@@ -68,6 +82,15 @@ func (p *plugin) SetPodResCtrlResources(proto protocol.HooksProtocol) error {
 	podCtx := proto.(*protocol.PodContext)
 	if podCtx == nil {
 		return fmt.Errorf("pod protocol is nil for plugin %v", name)
+	}
+
+	if v, ok := podCtx.Request.Annotations["nodes.koordinator.sh/resctrl"]; ok {
+		resource := &protocol.Resctrl{
+			Schemata: v,
+			Hook:     "",
+			Closid:   string(apiext.QoSBE),
+		}
+		podCtx.Response.Resources.Resctrl = resource
 	}
 
 	return nil
