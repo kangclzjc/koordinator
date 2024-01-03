@@ -1,7 +1,8 @@
-package util
+package resctrl
 
 import (
 	"fmt"
+
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
 	koordletutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util"
@@ -12,8 +13,8 @@ import (
 var cgroupReader = resourceexecutor.NewCgroupReader()
 
 type Resctrl struct {
-	L3 map[int64]string
-	MB map[int64]string
+	L3 map[int64]int64
+	MB map[int64]int64
 }
 
 type App struct {
@@ -45,6 +46,7 @@ type RDTEngine struct {
 
 func (R RDTEngine) Rebuild() {
 	//TODO implement me
+	panic("implement me")
 }
 
 func (R RDTEngine) GetCurrentCtrlGroups() map[string]Resctrl {

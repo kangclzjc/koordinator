@@ -41,7 +41,6 @@ const (
 	UnknownResctrlGroup = "Unknown"
 	name                = "Resctrl"
 	description         = "set resctrl for class/pod"
-
 	ruleNameForNodeSLO  = name + " (nodeSLO)"
 	ruleNameForNodeMeta = name + " (nodeMeta)"
 	RDT                 = true
@@ -54,7 +53,7 @@ var (
 )
 
 type plugin struct {
-	engine   util.ResctrlEngine
+	engine   resctrl.ResctrlEngine
 	rule     *Rule
 	executor resourceexecutor.ResourceUpdateExecutor
 }
@@ -70,7 +69,7 @@ func (p *plugin) Register(op hooks.Options) {
 	//reconciler.RegisterCgroupReconciler(reconciler.ContainerTasks, sysutil.Resctrl, description+" (pod resctl taskids)", p.UpdatePodTaskIds, reconciler.PodQOSFilter(), podQOSConditions...)
 
 	if RDT {
-		p.engine = util.NewRDTEngine()
+		p.engine = resctrl.NewRDTEngine()
 	}
 	//else if AMD {
 	//    p.engine = AMDEngine{}
