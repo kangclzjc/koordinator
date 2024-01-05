@@ -87,6 +87,7 @@ type Resources struct {
 	// extended resources
 	CPUBvt  *int64
 	Resctrl *Resctrl
+	CPUIdle *int64
 }
 
 func (r *Resources) IsOriginResSet() bool {
@@ -168,6 +169,15 @@ func injectMemoryLimit(cgroupParent string, memoryLimit int64, a *audit.EventHel
 func injectCPUBvt(cgroupParent string, bvtValue int64, a *audit.EventHelper, e resourceexecutor.ResourceUpdateExecutor) (resourceexecutor.ResourceUpdater, error) {
 	bvtValueStr := strconv.FormatInt(bvtValue, 10)
 	updater, err := resourceexecutor.DefaultCgroupUpdaterFactory.New(sysutil.CPUBVTWarpNsName, cgroupParent, bvtValueStr, a)
+	if err != nil {
+		return nil, err
+	}
+	return updater, nil
+}
+
+func injectCPUIdle(cgroupParent string, idleValue int64, a *audit.EventHelper, e resourceexecutor.ResourceUpdateExecutor) (resourceexecutor.ResourceUpdater, error) {
+	idleValueStr := strconv.FormatInt(idleValue, 10)
+	updater, err := resourceexecutor.DefaultCgroupUpdaterFactory.New(sysutil.CPUIdleName, cgroupParent, idleValueStr, a)
 	if err != nil {
 		return nil, err
 	}
