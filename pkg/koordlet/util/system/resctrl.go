@@ -26,15 +26,17 @@ import (
 	"strings"
 	"sync"
 
+	"go.uber.org/multierr"
 	"k8s.io/klog/v2"
 )
 
 const (
 	ResctrlName string = "resctrl"
 
-	ResctrlDir string = "resctrl/"
-	RdtInfoDir string = "info"
-	L3CatDir   string = "L3"
+	ResctrlDir    string = "resctrl/"
+	RdtInfoDir    string = "info"
+	L3CatDir      string = "L3"
+	LastCMDStatus string = "last_cmd_status"
 
 	ResctrlSchemataName string = "schemata"
 	ResctrlCbmMaskName  string = "cbm_mask"
@@ -536,8 +538,11 @@ func InitCatGroupIfNotExist(group string) error {
 		return fmt.Errorf("check dir %v for group %s but got unexpected err: %v", path, group, err)
 	}
 	err = os.Mkdir(path, 0755)
+	// TODO: add constraint to check group number?
 	if err != nil {
-		return fmt.Errorf("create dir %v failed for group %s, err: %v", path, group, err)
+		resctrlErr := GetCMDStatus()
+		return fmt.Errorf("create dir %v failed for group %s, err: %v",
+			path, group, multierr.Combine(err, resctrlErr))
 	}
 	return nil
 }
@@ -583,4 +588,16 @@ func CalculateCatL3MaskValue(cbm uint, startPercent, endPercent int64) (string, 
 
 	var l3Mask uint64 = (1 << endWay) - (1 << startWay)
 	return strconv.FormatUint(l3Mask, 16), nil
+}
+
+func GetCMDStatus() error {
+	lastCMDStatusPath := filepath.Join(Conf.SysFSRootDir, ResctrlDir, RdtInfoDir, LastCMDStatus)
+	errInfo, err := os.ReadFile(lastCMDStatusPath)
+	if err != nil {
+		return fmt.Errorf("failed to read last cmd status, path %s, err: %v", lastCMDStatusPath, err)
+	}
+	if len(errInfo) > 0 {
+		return fmt.Errorf("last cmd status: %s", string(errInfo))
+	}
+	return nil
 }

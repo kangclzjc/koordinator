@@ -17,10 +17,11 @@ limitations under the License.
 package resctrl
 
 import (
+	"sync"
+
 	slov1alpha1 "github.com/koordinator-sh/koordinator/apis/slo/v1alpha1"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
 	"k8s.io/klog/v2"
-	"sync"
 )
 
 type Rule struct {

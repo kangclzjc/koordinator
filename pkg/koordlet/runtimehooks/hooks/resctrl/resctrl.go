@@ -18,6 +18,7 @@ package resctrl
 
 import (
 	"fmt"
+
 	apiext "github.com/koordinator-sh/koordinator/apis/extension"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks"
@@ -25,6 +26,7 @@ import (
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/rule"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/util/resctrl"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
 	rmconfig "github.com/koordinator-sh/koordinator/pkg/runtimeproxy/config"
 )
 
@@ -84,13 +86,15 @@ func (p *plugin) SetPodResCtrlResources(proto protocol.HooksProtocol) error {
 		return fmt.Errorf("pod protocol is nil for plugin %v", name)
 	}
 
+	var resctrlInfo *protocol.Resctrl
 	if v, ok := podCtx.Request.Annotations["nodes.koordinator.sh/resctrl"]; ok {
-		resource := &protocol.Resctrl{
-			Schemata: v,
-			Hook:     "",
-			Closid:   string(apiext.QoSBE),
-		}
-		podCtx.Response.Resources.Resctrl = resource
+		// TODO: just save schemata or more info for policy?
+		resctrlInfo = p.abstractResctrlInfo(v)
+		podCtx.Response.Resources.Resctrl = resctrlInfo
+	}
+	err := system.InitCatGroupIfNotExist(resctrlInfo.Closid)
+	if err != nil {
+		// TODO: how to handle create error?
 	}
 
 	return nil
@@ -107,9 +111,21 @@ func (p *plugin) SetContainerResCtrlResources(proto protocol.HooksProtocol) erro
 		Closid:   string(apiext.QoSBE),
 	}
 	containerCtx.Response.Resources.Resctrl = resource
+	// add parent pid into right ctrl group
+
 	return nil
 }
 
 func (p *plugin) RemovePodResCtrlResources(proto protocol.HooksProtocol) error {
 	return nil
+}
+
+func (p *plugin) abstractResctrlInfo(str string) *protocol.Resctrl {
+	// TODO: engine get resctrl info from original string?
+	resource := &protocol.Resctrl{
+		Schemata: str,
+		Hook:     "", // complex, think about how to group it?
+		Closid:   string(apiext.QoSBE),
+	}
+	return resource
 }
