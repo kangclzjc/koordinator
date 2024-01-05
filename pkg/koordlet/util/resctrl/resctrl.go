@@ -13,8 +13,8 @@ import (
 var cgroupReader = resourceexecutor.NewCgroupReader()
 
 type Resctrl struct {
-	L3 map[int64]int64
-	MB map[int64]int64
+	L3 map[int64]string
+	MB map[int64]string
 }
 
 type App struct {

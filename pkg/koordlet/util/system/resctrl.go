@@ -733,3 +733,15 @@ func isResctrlAvailableByKernelCmd(path string) (bool, bool, error) {
 	}
 	return isCatFlagSet, isMbaFlagSet, nil
 }
+
+func GetCMDStatus() error {
+	lastCMDStatusPath := filepath.Join(Conf.SysFSRootDir, ResctrlDir, RdtInfoDir, LastCMDStatus)
+	errInfo, err := os.ReadFile(lastCMDStatusPath)
+	if err != nil {
+		return fmt.Errorf("failed to read last cmd status, path %s, err: %v", lastCMDStatusPath, err)
+	}
+	if len(errInfo) > 0 {
+		return fmt.Errorf("last cmd status: %s", string(errInfo))
+	}
+	return nil
+}
