@@ -129,11 +129,11 @@ func (c *ContainerRequest) FromReconciler(podMeta *statesinformer.PodMeta, conta
 	if sandbox {
 		var err error
 		if c.ContainerMeta.ID, err = koordletutil.GetPodSandboxContainerID(podMeta.Pod); err != nil {
-			klog.V(4).Infof("no container id for pod %v, container may not start, %v",
-				util.GetPodKey(podMeta.Pod), err)
+			klog.V(4).Infof("failed to get sandbox container ID for pod %s, err: %s",
+				podMeta.Key(), err)
 			return
 		} else if c.ContainerMeta.ID == "" {
-			klog.V(4).Infof("container status is empty for pod %v, skip")
+			klog.V(4).Infof("container ID is empty for pod %s, pod may not start, skip", podMeta.Key())
 			return
 		}
 	} else {
@@ -257,6 +257,11 @@ func (c *ContainerContext) NriDone(executor resourceexecutor.ResourceUpdateExecu
 	if c.Response.Resources.MemoryLimit != nil {
 		adjust.SetLinuxMemoryLimit(*c.Response.Resources.MemoryLimit)
 		update.SetLinuxMemoryLimit(*c.Response.Resources.MemoryLimit)
+	}
+
+	if c.Response.Resources.Resctrl != nil {
+		adjust.SetLinuxRDTClass((*(c.Response.Resources.Resctrl)).Closid)
+		update.SetLinuxRDTClass((*(c.Response.Resources.Resctrl)).Closid)
 	}
 
 	if c.Response.AddContainerEnvs != nil {

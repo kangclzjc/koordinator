@@ -452,6 +452,24 @@ func Test_Plugin_PreFilterExtensionsWithReservation(t *testing.T) {
 		},
 	}
 	assert.Equal(t, expectPreemptible, state.preemptibleInRRs)
+
+	state.preemptibleInRRs = map[string]map[types.UID]map[schedulingv1alpha1.DeviceType]deviceResources{}
+	status = pl.PreFilterExtensions().AddPod(context.TODO(), cycleState, pod, framework.NewPodInfo(allocatedPod), nodeInfo)
+	assert.True(t, status.IsSuccess())
+	expectPreemptible = map[string]map[types.UID]map[schedulingv1alpha1.DeviceType]deviceResources{
+		"test-node-1": {
+			"123456": {
+				schedulingv1alpha1.GPU: {
+					1: {
+						apiext.ResourceGPUCore:        *resource.NewQuantity(-100, resource.DecimalSI),
+						apiext.ResourceGPUMemory:      *resource.NewQuantity(-8*1024*1024*1024, resource.BinarySI),
+						apiext.ResourceGPUMemoryRatio: *resource.NewQuantity(-100, resource.DecimalSI),
+					},
+				},
+			},
+		},
+	}
+	assert.Equal(t, expectPreemptible, state.preemptibleInRRs)
 }
 
 func Test_Plugin_PreFilter(t *testing.T) {
@@ -1996,7 +2014,26 @@ func Test_Plugin_FilterReservation(t *testing.T) {
 			NodeName: "test-node-1",
 		},
 	}
-	nd.updateCacheUsed(allocations, allocatedPod, true)
+	nd.updateCacheUsed(apiext.DeviceAllocations{
+		schedulingv1alpha1.GPU: {
+			{
+				Minor: 1,
+				Resources: corev1.ResourceList{
+					apiext.ResourceGPUCore:        resource.MustParse("100"),
+					apiext.ResourceGPUMemory:      resource.MustParse("8Gi"),
+					apiext.ResourceGPUMemoryRatio: resource.MustParse("100"),
+				},
+			},
+			{
+				Minor: 2,
+				Resources: corev1.ResourceList{
+					apiext.ResourceGPUCore:        resource.MustParse("100"),
+					apiext.ResourceGPUMemory:      resource.MustParse("8Gi"),
+					apiext.ResourceGPUMemoryRatio: resource.MustParse("100"),
+				},
+			},
+		},
+	}, allocatedPod, true)
 	reservationInfo.AddAssignedPod(allocatedPod)
 	nodeToState, status = pl.RestoreReservation(context.TODO(), cycleState, pod, []*frameworkext.ReservationInfo{reservationInfo}, nil, nodeInfo)
 	assert.True(t, status.IsSuccess())
@@ -2006,7 +2043,7 @@ func Test_Plugin_FilterReservation(t *testing.T) {
 	assert.True(t, status.IsSuccess())
 
 	status = pl.FilterReservation(context.TODO(), cycleState, pod, reservationInfo, "test-node-1")
-	assert.Equal(t, framework.NewStatus(framework.Unschedulable, ErrInsufficientDevices), status)
+	assert.Equal(t, framework.NewStatus(framework.Unschedulable, "node(s) no reservation(s) to meet the device requirements"), status)
 }
 
 func Test_Plugin_Reserve(t *testing.T) {

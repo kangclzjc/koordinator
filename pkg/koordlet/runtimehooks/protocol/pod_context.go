@@ -177,6 +177,14 @@ func (p *PodContext) NriDone(executor resourceexecutor.ResourceUpdateExecutor) {
 	p.Update()
 }
 
+func (p *PodContext) NriRemoveDone(executor resourceexecutor.ResourceUpdateExecutor) {
+	if p.executor == nil {
+		p.executor = executor
+	}
+	p.removeForExt()
+	p.Update()
+}
+
 func (p *PodContext) FromReconciler(podMeta *statesinformer.PodMeta) {
 	p.Request.FromReconciler(podMeta)
 }
@@ -222,6 +230,20 @@ func (p *PodContext) injectForExt() {
 				p.Request.PodMeta.Name, *p.Response.Resources.CPUBvt, p.Request.CgroupParent)
 		}
 	}
+	if p.Response.Resources.CPUIdle != nil {
+		eventHelper := audit.V(3).Pod(p.Request.PodMeta.Namespace, p.Request.PodMeta.Name).Reason("runtime-hooks").Message(
+			"set pod idle to %v", *p.Response.Resources.CPUIdle)
+		updater, err := injectCPUIdle(p.Request.CgroupParent, *p.Response.Resources.CPUIdle, eventHelper, p.executor)
+		if err != nil {
+			klog.Infof("set pod %v/%v idle %v on cgroup parent %v failed, error %v", p.Request.PodMeta.Namespace,
+				p.Request.PodMeta.Name, *p.Response.Resources.CPUIdle, p.Request.CgroupParent, err)
+		} else {
+			p.updaters = append(p.updaters, updater)
+			klog.V(5).Infof("set pod %v/%v idle %v on cgroup parent %v", p.Request.PodMeta.Namespace,
+				p.Request.PodMeta.Name, *p.Response.Resources.CPUIdle, p.Request.CgroupParent)
+		}
+	}
+
 	// some of pod-level cgroups are manually updated since pod-stage hooks do not support it;
 	// kubelet may set the cgroups when pod is created or restarted, so we need to update the cgroups repeatedly
 	if p.Response.Resources.CPUShares != nil {
@@ -262,5 +284,18 @@ func (p *PodContext) injectForExt() {
 			klog.V(5).Infof("set pod %v/%v memory limit %v on cgroup parent %v",
 				p.Request.PodMeta.Namespace, p.Request.PodMeta.Name, *p.Response.Resources.MemoryLimit, p.Request.CgroupParent)
 		}
+	}
+	if p.Response.Resources.Resctrl != nil {
+		// eventHelper := audit.V(3).Pod(p.Request.PodMeta.Namespace, p.Request.PodMeta.Name).Reason("runtime-hooks").Message("set pod resctrl limit to %v", *p.Response.Resources.Resctrl)
+		// updater, err := injectResctrl()
+		// create ctrl group and monitor group
+	}
+}
+
+func (p *PodContext) removeForExt() {
+	if p.Response.Resources.Resctrl != nil {
+		// eventHelper := audit.V(3).Pod(p.Request.PodMeta.Namespace, p.Request.PodMeta.Name).Reason("runtime-hooks").Message("set pod resctrl limit to %v", *p.Response.Resources.Resctrl)
+		// updater, err := removeResctrl()
+		// remove ctrl group and monitor group
 	}
 }
