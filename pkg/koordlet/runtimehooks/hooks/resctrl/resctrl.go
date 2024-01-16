@@ -54,7 +54,7 @@ var (
 )
 
 type plugin struct {
-	engine   resctrl.ResctrlEngine
+	engine   util.ResctrlEngine
 	rule     *Rule
 	executor resourceexecutor.ResourceUpdateExecutor
 }
@@ -70,7 +70,7 @@ func (p *plugin) Register(op hooks.Options) {
 	//reconciler.RegisterCgroupReconciler(reconciler.ContainerTasks, sysutil.Resctrl, description+" (pod resctl taskids)", p.UpdatePodTaskIds, reconciler.PodQOSFilter(), podQOSConditions...)
 
 	if RDT {
-		p.engine = resctrl.NewRDTEngine()
+		p.engine = util.NewRDTEngine()
 	}
 	//else if AMD {
 	//    p.engine = AMDEngine{}
@@ -105,6 +105,7 @@ func (p *plugin) SetContainerResCtrlResources(proto protocol.HooksProtocol) erro
 	if containerCtx == nil {
 		return fmt.Errorf("container protocol is nil for plugin %v", name)
 	}
+
 	resource := &protocol.Resctrl{
 		Schemata: "",
 		Hook:     "",
