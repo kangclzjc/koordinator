@@ -18,6 +18,7 @@ package resctrl
 
 import (
 	"fmt"
+	"os"
 
 	apiext "github.com/koordinator-sh/koordinator/apis/extension"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
@@ -59,9 +60,9 @@ type plugin struct {
 }
 
 func (p *plugin) Register(op hooks.Options) {
-	hooks.Register(rmconfig.PreRunPodSandbox, name, description+" (pod)", p.SetPodResCtrlResources)
-	hooks.Register(rmconfig.PreCreateContainer, name, description+" (pod)", p.SetContainerResCtrlResources)
-	hooks.Register(rmconfig.PreRemoveRunPodSandbox, name, description+" (pod)", p.RemovePodResCtrlResources)
+	hooks.Register(rmconfig.PreRunPodSandbox, name, description+" (pod)", p.SetPodResctrlResources)
+	hooks.Register(rmconfig.PreCreateContainer, name, description+" (pod)", p.SetContainerResctrlResources)
+	hooks.Register(rmconfig.PreRemoveRunPodSandbox, name, description+" (pod)", p.RemovePodResctrlResources)
 	rule.Register(ruleNameForNodeSLO, description,
 		rule.WithParseFunc(statesinformer.RegisterTypeNodeSLOSpec, p.parseRuleForNodeSLO),
 		rule.WithUpdateCallback(p.ruleUpdateCbForNodeSLO))
@@ -79,7 +80,7 @@ func (p *plugin) Register(op hooks.Options) {
 	p.engine.Rebuild()
 }
 
-func (p *plugin) SetPodResCtrlResources(proto protocol.HooksProtocol) error {
+func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
 	podCtx := proto.(*protocol.PodContext)
 	if podCtx == nil {
 		return fmt.Errorf("pod protocol is nil for plugin %v", name)
@@ -91,15 +92,33 @@ func (p *plugin) SetPodResCtrlResources(proto protocol.HooksProtocol) error {
 		resctrlInfo = p.abstractResctrlInfo(v)
 		podCtx.Response.Resources.Resctrl = resctrlInfo
 	}
-	err := system.InitCatGroupIfNotExist(resctrlInfo.Closid)
+	err := system.InitCtrlGroupIfNotExist(resctrlInfo.Closid)
 	if err != nil {
 		// TODO: how to handle create error?
 	}
 
+	// must called after mount
+	ids, _ := system.GetCacheIds()
+	resctrlRaw := system.NewResctrlSchemataRaw(ids)
+	resctrlRaw.ParseResctrlSchemata(resctrlInfo.Schemata, len(ids))
+	groupPath := system.ResctrlSchemata.Path(resctrlInfo.Closid)
+	fd, err := os.Open(groupPath)
+	defer fd.Close()
+	if err != nil {
+		// TODO: how to handle fd error?
+	}
+	_, err = fd.Write([]byte(resctrlRaw.L3String()))
+	if err != nil {
+		// TODO: how to handle fd error?
+	}
+	_, err = fd.Write([]byte(resctrlRaw.MBString()))
+	if err != nil {
+		// TODO: how to handle fd error?
+	}
 	return nil
 }
 
-func (p *plugin) SetContainerResCtrlResources(proto protocol.HooksProtocol) error {
+func (p *plugin) SetContainerResctrlResources(proto protocol.HooksProtocol) error {
 	containerCtx := proto.(*protocol.ContainerContext)
 	if containerCtx == nil {
 		return fmt.Errorf("container protocol is nil for plugin %v", name)
@@ -116,7 +135,8 @@ func (p *plugin) SetContainerResCtrlResources(proto protocol.HooksProtocol) erro
 	return nil
 }
 
-func (p *plugin) RemovePodResCtrlResources(proto protocol.HooksProtocol) error {
+func (p *plugin) RemovePodResctrlResources(proto protocol.HooksProtocol) error {
+	// TODO: how to handle remove for special pod
 	return nil
 }
 

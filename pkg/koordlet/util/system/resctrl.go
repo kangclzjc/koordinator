@@ -562,7 +562,7 @@ func CheckAndTryEnableResctrlCat() error {
 	return nil
 }
 
-func InitCatGroupIfNotExist(group string) error {
+func InitCtrlGroupIfNotExist(group string) error {
 	path := GetResctrlGroupRootDirPath(group)
 	_, err := os.Stat(path)
 	if err == nil {
