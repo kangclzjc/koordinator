@@ -88,7 +88,6 @@ type Resources struct {
 	CPUBvt  *int64
 	Resctrl *Resctrl
 	CPUIdle *int64
-	Resctrl *Resctrl
 }
 
 func (r *Resources) IsOriginResSet() bool {
