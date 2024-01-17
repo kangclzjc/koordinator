@@ -17,6 +17,7 @@ limitations under the License.
 package reconciler
 
 import (
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks/resctrl"
 	"sync"
 	"time"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/protocol"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
+	resutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util/resctrl"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
 	"github.com/koordinator-sh/koordinator/pkg/util"
 )
@@ -313,7 +315,18 @@ func (c *reconciler) reconcilePodCgroup(stopCh <-chan struct{}) {
 		select {
 		case <-c.podUpdated:
 			podsMeta := c.getPodsMeta()
+			curTaskMaps := map[string]map[int32]struct{}{}
+			var err error
 			for _, podMeta := range podsMeta {
+				if _, ok := podMeta.Pod.Annotations[resctrl.Anno]; ok {
+					group := string(podMeta.Pod.UID)
+					curTaskMaps[group], err = system.ReadResctrlTasksMap(group)
+					if err != nil {
+						klog.Warningf("failed to read Cat L3 tasks for resctrl group %s, err: %s", group, err)
+					}
+					resutil.GetPodCgroupNewTaskIds(podMeta, curTaskMaps[group])
+				}
+
 				for _, r := range globalCgroupReconcilers.podLevel {
 					reconcileFn, ok := r.fn[r.filter.Filter(podMeta)]
 					if !ok {
@@ -323,6 +336,7 @@ func (c *reconciler) reconcilePodCgroup(stopCh <-chan struct{}) {
 					}
 
 					podCtx := protocol.HooksProtocolBuilder.Pod(podMeta)
+
 					if err := reconcileFn(podCtx); err != nil {
 						klog.Warningf("calling reconcile function %v for pod %v failed, error %v",
 							r.description, podMeta.Key(), err)

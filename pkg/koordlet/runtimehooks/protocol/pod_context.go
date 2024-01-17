@@ -177,6 +177,14 @@ func (p *PodContext) NriDone(executor resourceexecutor.ResourceUpdateExecutor) {
 	p.Update()
 }
 
+func (p *PodContext) NriRemoveDone(executor resourceexecutor.ResourceUpdateExecutor) {
+	if p.executor == nil {
+		p.executor = executor
+	}
+	p.removeForExt()
+	p.Update()
+}
+
 func (p *PodContext) FromReconciler(podMeta *statesinformer.PodMeta) {
 	p.Request.FromReconciler(podMeta)
 }
@@ -276,5 +284,18 @@ func (p *PodContext) injectForExt() {
 			klog.V(5).Infof("set pod %v/%v memory limit %v on cgroup parent %v",
 				p.Request.PodMeta.Namespace, p.Request.PodMeta.Name, *p.Response.Resources.MemoryLimit, p.Request.CgroupParent)
 		}
+	}
+	if p.Response.Resources.Resctrl != nil {
+		// eventHelper := audit.V(3).Pod(p.Request.PodMeta.Namespace, p.Request.PodMeta.Name).Reason("runtime-hooks").Message("set pod resctrl limit to %v", *p.Response.Resources.Resctrl)
+		// updater, err := injectResctrl()
+		// create ctrl group and monitor group
+	}
+}
+
+func (p *PodContext) removeForExt() {
+	if p.Response.Resources.Resctrl != nil {
+		// eventHelper := audit.V(3).Pod(p.Request.PodMeta.Namespace, p.Request.PodMeta.Name).Reason("runtime-hooks").Message("set pod resctrl limit to %v", *p.Response.Resources.Resctrl)
+		// updater, err := removeResctrl()
+		// remove ctrl group and monitor group
 	}
 }
