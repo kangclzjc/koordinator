@@ -19,6 +19,7 @@ package resctrl
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	apiext "github.com/koordinator-sh/koordinator/apis/extension"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
@@ -26,7 +27,7 @@ import (
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/protocol"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/rule"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
-	"github.com/koordinator-sh/koordinator/pkg/koordlet/util/resctrl"
+	util "github.com/koordinator-sh/koordinator/pkg/koordlet/util/resctrl"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
 	rmconfig "github.com/koordinator-sh/koordinator/pkg/runtimeproxy/config"
 )
@@ -46,7 +47,7 @@ const (
 	ruleNameForNodeSLO  = name + " (nodeSLO)"
 	ruleNameForNodeMeta = name + " (nodeMeta)"
 	RDT                 = true
-	Anno                = "node.koordinator.sh/resctrl"
+	ResctrlAnno         = "node.koordinator.sh/resctrl"
 )
 
 var (
@@ -82,16 +83,16 @@ func (p *plugin) Register(op hooks.Options) {
 }
 
 func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
-	podCtx := proto.(*protocol.PodContext)
-	if podCtx == nil {
+	podCtx, ok := proto.(*protocol.PodContext)
+	if !ok {
 		return fmt.Errorf("pod protocol is nil for plugin %v", name)
 	}
 
 	var resctrlInfo *protocol.Resctrl
-	if v, ok := podCtx.Request.Annotations["nodes.koordinator.sh/resctrl"]; ok {
+	if v, ok := podCtx.Request.Annotations[ResctrlAnno]; ok {
 		// TODO: just save schemata or more info for policy?
-		resctrlInfo = p.abstractResctrlInfo(v)
-		podCtx.Response.Resources.Resctrl = resctrlInfo
+		qos := "be" // find qos from cgroup name? better idea?
+		resctrlInfo = p.abstractResctrlInfo(podCtx.Request.PodMeta.Name, v, qos)
 	}
 	err := system.InitCatGroupIfNotExist(resctrlInfo.Closid)
 	if err != nil {
@@ -103,26 +104,26 @@ func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
 	resctrlRaw := system.NewResctrlSchemataRaw(ids)
 	resctrlRaw.ParseResctrlSchemata(resctrlInfo.Schemata, len(ids))
 	groupPath := system.ResctrlSchemata.Path(resctrlInfo.Closid)
+	// TODO: we can reduce
 	fd, err := os.Open(groupPath)
+	if err != nil {
+		// TODO: how to handle fd error?
+	}
 	defer fd.Close()
+	_, err = fd.Write([]byte(
+		strings.Join([]string{
+			resctrlRaw.L3String(), resctrlRaw.MBString()},
+			"\n")))
 	if err != nil {
 		// TODO: how to handle fd error?
 	}
-	_, err = fd.Write([]byte(resctrlRaw.L3String()))
-	if err != nil {
-		// TODO: how to handle fd error?
-	}
-
-	_, err = fd.Write([]byte(resctrlRaw.MBString()))
-	if err != nil {
-		// TODO: how to handle fd error?
-	}
+	podCtx.Response.Resources.Resctrl = resctrlInfo
 	return nil
 }
 
 func (p *plugin) SetContainerResctrlResources(proto protocol.HooksProtocol) error {
-	containerCtx := proto.(*protocol.ContainerContext)
-	if containerCtx == nil {
+	containerCtx, ok := proto.(*protocol.ContainerContext)
+	if !ok {
 		return fmt.Errorf("container protocol is nil for plugin %v", name)
 	}
 
@@ -139,15 +140,30 @@ func (p *plugin) SetContainerResctrlResources(proto protocol.HooksProtocol) erro
 
 func (p *plugin) RemovePodResctrlResources(proto protocol.HooksProtocol) error {
 	// TODO: how to handle remove for special pod
+	podCtx, ok := proto.(*protocol.PodContext)
+	if !ok {
+		return fmt.Errorf("pod protocol is nil for plugin %v", name)
+	}
+
+	if podCtx.Request.Annotations[ResctrlAnno] != "" {
+		if err := os.Remove(system.GetResctrlGroupRootDirPath(podCtx.Request.PodMeta.Name)); err != nil {
+			return fmt.Errorf("cannot remove ctrl group, err: %w", err)
+		}
+	}
 	return nil
 }
 
-func (p *plugin) abstractResctrlInfo(str string) *protocol.Resctrl {
-	// TODO: engine get resctrl info from original string?
-	resource := &protocol.Resctrl{
-		Schemata: str,
-		Hook:     "", // complex, think about how to group it?
-		Closid:   string(apiext.QoSBE),
+func (p *plugin) abstractResctrlInfo(podId, annotation, qos string) (resource *protocol.Resctrl) {
+	if annotation != "" {
+		// TODO: convert annotation into schemataRaw? a final schemata discuss in thursday?
+		resource = &protocol.Resctrl{
+			Schemata: "",
+			Hook:     "", // complex, think about how to group it?
+			Closid:   podId,
+		}
 	}
+
 	return resource
 }
+
+// func (p *plugin)

@@ -17,7 +17,6 @@ limitations under the License.
 package reconciler
 
 import (
-	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks/resctrl"
 	"sync"
 	"time"
 
@@ -26,6 +25,7 @@ import (
 
 	apiext "github.com/koordinator-sh/koordinator/apis/extension"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks/resctrl"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/protocol"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
 	resutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util/resctrl"
@@ -318,7 +318,7 @@ func (c *reconciler) reconcilePodCgroup(stopCh <-chan struct{}) {
 			curTaskMaps := map[string]map[int32]struct{}{}
 			var err error
 			for _, podMeta := range podsMeta {
-				if _, ok := podMeta.Pod.Annotations[resctrl.Anno]; ok {
+				if _, ok := podMeta.Pod.Annotations[resctrl.ResctrlAnno]; ok {
 					group := string(podMeta.Pod.UID)
 					curTaskMaps[group], err = system.ReadResctrlTasksMap(group)
 					if err != nil {

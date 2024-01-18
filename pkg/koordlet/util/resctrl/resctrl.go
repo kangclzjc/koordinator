@@ -2,30 +2,33 @@ package util
 
 import (
 	"fmt"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
+
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
 	koordletutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/klog/v2"
 )
 
 var cgroupReader = resourceexecutor.NewCgroupReader()
 
+// this struct save final cacheid schemata
 type Resctrl struct {
-	L3 map[int64]string
-	MB map[int64]string
+	L3 map[int]string
+	MB map[int]string
 }
 
 type App struct {
 	Resctrl Resctrl
-	//Hooks   Hook
+	// Hooks   Hook
 	Closid string
 }
 
 type ResctrlEngine interface {
 	Rebuild() // rebuild the current control group
 	GetCurrentCtrlGroups() map[string]Resctrl
-	Config(config string)
+	Config(schemata string) // TODO: use schemata or use policy to parse this string?
 	GetConfig() map[string]string
 	RegisterApp(podid, annotation, closid string) error
 	GetApp(podid string) (App, error)
@@ -41,6 +44,7 @@ func NewRDTEngine() RDTEngine {
 type RDTEngine struct {
 	Apps       map[string]App
 	CtrlGroups map[string]Resctrl
+	policy     ResctrlPolicy
 }
 
 func (R RDTEngine) Rebuild() {
@@ -76,8 +80,12 @@ func (R RDTEngine) GetApp(id string) (App, error) {
 	if v, ok := R.Apps[id]; ok {
 		return v, nil
 	} else {
-		return App{}, fmt.Errorf("No App %s", id)
+		return App{}, fmt.Errorf("no App %s", id)
 	}
+}
+
+type ResctrlPolicy interface {
+	ParseAnnotation(annotation string) (Resctrl, error)
 }
 
 func GetPodCgroupNewTaskIds(podMeta *statesinformer.PodMeta, tasksMap map[int32]struct{}) []int32 {
