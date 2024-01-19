@@ -13,7 +13,6 @@ import (
 
 var cgroupReader = resourceexecutor.NewCgroupReader()
 
-// this struct save final cacheid schemata
 type Resctrl struct {
 	L3 map[int]string
 	MB map[int]string
@@ -25,10 +24,11 @@ type App struct {
 	Closid string
 }
 
+// TODO: @Bowen we should talk about this interface functions' meaning?
 type ResctrlEngine interface {
 	Rebuild() // rebuild the current control group
 	GetCurrentCtrlGroups() map[string]Resctrl
-	Config(schemata string) // TODO: use schemata or use policy to parse this string?
+	Config(schemata string) // TODO:@Bowen use schemata or use policy to parse this string?
 	GetConfig() map[string]string
 	RegisterApp(podid, annotation, closid string) error
 	GetApp(podid string) (App, error)
@@ -44,7 +44,7 @@ func NewRDTEngine() RDTEngine {
 type RDTEngine struct {
 	Apps       map[string]App
 	CtrlGroups map[string]Resctrl
-	policy     ResctrlPolicy
+	Policy     ResctrlPolicy
 }
 
 func (R RDTEngine) Rebuild() {
@@ -84,8 +84,8 @@ func (R RDTEngine) GetApp(id string) (App, error) {
 	}
 }
 
+// TODO:@Bowen use policy to change some action in the future? Any ideas?
 type ResctrlPolicy interface {
-	ParseAnnotation(annotation string) (Resctrl, error)
 }
 
 func GetPodCgroupNewTaskIds(podMeta *statesinformer.PodMeta, tasksMap map[int32]struct{}) []int32 {

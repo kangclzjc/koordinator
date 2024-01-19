@@ -54,6 +54,7 @@ var (
 	resctrlGroupList = []string{LSRResctrlGroup, LSResctrlGroup, BEResctrlGroup}
 )
 
+// TODO:@Bowen choose parser there or in engine, should we init with some parameters?
 type plugin struct {
 	engine   util.ResctrlEngine
 	rule     *Rule
