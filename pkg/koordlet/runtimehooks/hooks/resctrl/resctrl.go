@@ -19,7 +19,6 @@ package resctrl
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	apiext "github.com/koordinator-sh/koordinator/apis/extension"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
@@ -90,33 +89,17 @@ func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
 
 	var resctrlInfo *protocol.Resctrl
 	if v, ok := podCtx.Request.Annotations[ResctrlAnno]; ok {
-		// TODO: just save schemata or more info for policy?
+		// TODO:@Bowen just save schemata or more info for policy?
 		qos := "be" // find qos from cgroup name? better idea?
 		resctrlInfo = p.abstractResctrlInfo(podCtx.Request.PodMeta.Name, v, qos)
 	}
 	err := system.InitCatGroupIfNotExist(resctrlInfo.Closid)
 	if err != nil {
-		// TODO: how to handle create error?
+		// TODO:@Bowen how to handle create error?
 	}
 
-	// must called after mount
-	ids, _ := system.GetCacheIds()
-	resctrlRaw := system.NewResctrlSchemataRaw(ids)
-	resctrlRaw.ParseResctrlSchemata(resctrlInfo.Schemata, len(ids))
-	groupPath := system.ResctrlSchemata.Path(resctrlInfo.Closid)
-	// TODO: we can reduce
-	fd, err := os.Open(groupPath)
-	if err != nil {
-		// TODO: how to handle fd error?
-	}
-	defer fd.Close()
-	_, err = fd.Write([]byte(
-		strings.Join([]string{
-			resctrlRaw.L3String(), resctrlRaw.MBString()},
-			"\n")))
-	if err != nil {
-		// TODO: how to handle fd error?
-	}
+	updater := resourceexecutor.NewResctrlSchemataResource(resctrlInfo.Closid, resctrlInfo.Schemata)
+	updater.MergeUpdate()
 	podCtx.Response.Resources.Resctrl = resctrlInfo
 	return nil
 }
@@ -139,7 +122,6 @@ func (p *plugin) SetContainerResctrlResources(proto protocol.HooksProtocol) erro
 }
 
 func (p *plugin) RemovePodResctrlResources(proto protocol.HooksProtocol) error {
-	// TODO: how to handle remove for special pod
 	podCtx, ok := proto.(*protocol.PodContext)
 	if !ok {
 		return fmt.Errorf("pod protocol is nil for plugin %v", name)

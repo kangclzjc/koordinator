@@ -51,6 +51,30 @@ func (r *ResctrlSchemataResourceUpdater) Clone() ResourceUpdater {
 	}
 }
 
+func NewResctrlSchemataResource(group, schemata string) ResourceUpdater {
+	schemataFile := sysutil.ResctrlSchemata.Path(group)
+	schemataKey := sysutil.ResctrlSchemataName + ":" + schemataFile
+	// The current assumption is that the cache ids obtained through
+	// resctrl schemata will not go wrong. TODO: Use the ability of node info
+	// to obtain cache ids to replace the current method.
+	ids, _ := sysutil.CacheIdsCacheFunc()
+	schemataRaw := sysutil.NewResctrlSchemataRaw(ids)
+	schemataRaw.ParseResctrlSchemata(schemata, -1)
+	schemataStr := strings.Join(
+		[]string{schemataRaw.L3String(), schemataRaw.MBString()}, "")
+	klog.V(6).Infof("generate new resctrl schemata resource, file %s, key %s, value %s",
+		schemataFile, schemataKey, schemataStr)
+	return &ResctrlSchemataResourceUpdater{
+		DefaultResourceUpdater: DefaultResourceUpdater{
+			key:        schemataKey,
+			file:       schemataFile,
+			value:      schemataStr,
+			updateFunc: UpdateResctrlSchemataFunc,
+		},
+		schemataRaw: schemataRaw,
+	}
+}
+
 func NewResctrlL3SchemataResource(group, schemataDelta string, l3Num int) ResourceUpdater {
 	schemataFile := sysutil.ResctrlSchemata.Path(group)
 	l3SchemataKey := sysutil.L3SchemataPrefix + ":" + schemataFile

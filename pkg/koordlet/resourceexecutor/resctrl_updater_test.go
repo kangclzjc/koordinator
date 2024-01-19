@@ -90,7 +90,7 @@ func TestNewResctrlL3SchemataResource(t *testing.T) {
 
 		testingPrepareResctrlL3CatGroups(t, "7ff", "    L3:0=ff;1=ff\n    MB:0=100;1=100")
 		updater := NewResctrlL3SchemataResource("BE", "3c", 2)
-		assert.Equal(t, updater.Value(), "L3:0=3c;1=3c;\n")
+		assert.Equal(t, "L3:0=3c;1=3c;\n", updater.Value())
 		err := updater.update()
 		assert.NoError(t, err)
 	})
@@ -107,7 +107,23 @@ func TestNewResctrlMbSchemataResource(t *testing.T) {
 
 		testingPrepareResctrlL3CatGroups(t, "7ff", "    L3:0=ff;1=ff\n    MB:0=100;1=100")
 		updater := NewResctrlMbSchemataResource("BE", "90", 2)
-		assert.Equal(t, updater.Value(), "MB:0=90;1=90;\n")
+		assert.Equal(t, "MB:0=90;1=90;\n", updater.Value())
+		err := updater.update()
+		assert.NoError(t, err)
+	})
+}
+
+func TestNewResctrlSchemataResource(t *testing.T) {
+	t.Run("test", func(t *testing.T) {
+		helper := system.NewFileTestUtil(t)
+		defer helper.Cleanup()
+
+		sysFSRootDirName := "NewResctrlSchemataResource"
+		helper.MkDirAll(sysFSRootDirName)
+		system.Conf.SysFSRootDir = filepath.Join(helper.TempDir, sysFSRootDirName)
+		testingPrepareResctrlL3CatGroups(t, "7ff", "    L3:0=ff;1=ff\n    MB:0=100;1=100")
+		updater := NewResctrlSchemataResource("BE", "L3:0=f;1=f\nMB:0=60;1=60")
+		assert.Equal(t, "L3:0=f;1=f;\nMB:0=60;1=60;\n", updater.Value())
 		err := updater.update()
 		assert.NoError(t, err)
 	})
