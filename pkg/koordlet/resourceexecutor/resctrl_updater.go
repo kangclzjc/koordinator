@@ -58,7 +58,7 @@ func NewResctrlSchemataResource(group, schemata string) ResourceUpdater {
 	// resctrl schemata will not go wrong. TODO: Use the ability of node info
 	// to obtain cache ids to replace the current method.
 	ids, _ := sysutil.CacheIdsCacheFunc()
-	schemataRaw := sysutil.NewResctrlSchemataRaw(ids)
+	schemataRaw := sysutil.NewResctrlSchemataRaw(ids).WithL3Num(len(ids))
 	schemataRaw.ParseResctrlSchemata(schemata, -1)
 	schemataStr := strings.Join(
 		[]string{schemataRaw.L3String(), schemataRaw.MBString()}, "")
