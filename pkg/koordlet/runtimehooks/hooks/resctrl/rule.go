@@ -28,6 +28,10 @@ type Rule struct {
 	lock sync.RWMutex
 }
 
+func newRule() *Rule {
+	return &Rule{}
+}
+
 func (p *plugin) parseRuleForNodeSLO(mergedNodeSLOIf interface{}) (bool, error) {
 	mergedNodeSLO := mergedNodeSLOIf.(*slov1alpha1.NodeSLOSpec)
 	if mergedNodeSLO == nil || mergedNodeSLO.ResourceQOSStrategy == nil {

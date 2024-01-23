@@ -61,6 +61,21 @@ type plugin struct {
 	executor resourceexecutor.ResourceUpdateExecutor
 }
 
+var singleton *plugin
+
+func Object() *plugin {
+	if singleton == nil {
+		singleton = newPlugin()
+	}
+	return singleton
+}
+
+func newPlugin() *plugin {
+	return &plugin{
+		rule: newRule(),
+	}
+}
+
 func (p *plugin) Register(op hooks.Options) {
 	hooks.Register(rmconfig.PreRunPodSandbox, name, description+" (pod)", p.SetPodResctrlResources)
 	hooks.Register(rmconfig.PreCreateContainer, name, description+" (pod)", p.SetContainerResctrlResources)

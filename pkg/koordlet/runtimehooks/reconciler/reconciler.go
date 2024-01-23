@@ -320,11 +320,14 @@ func (c *reconciler) reconcilePodCgroup(stopCh <-chan struct{}) {
 			for _, podMeta := range podsMeta {
 				if _, ok := podMeta.Pod.Annotations[resctrl.ResctrlAnno]; ok {
 					group := string(podMeta.Pod.UID)
+					// TODO@kang: parse annotation
+					// TODO@kang: reconcile schemata
 					curTaskMaps[group], err = system.ReadResctrlTasksMap(group)
 					if err != nil {
 						klog.Warningf("failed to read Cat L3 tasks for resctrl group %s, err: %s", group, err)
 					}
 					resutil.GetPodCgroupNewTaskIds(podMeta, curTaskMaps[group])
+					// TODO@kang: reconcile new taskIDs
 				}
 
 				for _, r := range globalCgroupReconcilers.podLevel {
