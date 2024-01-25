@@ -88,7 +88,7 @@ var (
 		BatchResource:    {Default: true, PreRelease: featuregate.Beta},
 		CPUNormalization: {Default: false, PreRelease: featuregate.Alpha},
 		CoreSched:        {Default: false, PreRelease: featuregate.Alpha},
-		Resctrl:          {Default: false, PreRelease: featuregate.Alpha},
+		Resctrl:          {Default: true, PreRelease: featuregate.Alpha},
 	}
 
 	runtimeHookPlugins = map[featuregate.Feature]HookPlugin{

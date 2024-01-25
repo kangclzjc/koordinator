@@ -58,7 +58,6 @@ func (R RDTEngine) GetCurrentCtrlGroups() map[string]Resctrl {
 
 func (R RDTEngine) Config(config string) {
 	//TODO implement me
-	panic("implement me")
 }
 
 func (R RDTEngine) GetConfig() map[string]string {

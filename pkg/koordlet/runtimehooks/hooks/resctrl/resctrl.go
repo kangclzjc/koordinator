@@ -17,10 +17,11 @@ limitations under the License.
 package resctrl
 
 import (
+	"encoding/json"
 	"fmt"
+	"k8s.io/klog/v2"
 	"os"
 
-	apiext "github.com/koordinator-sh/koordinator/apis/extension"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/protocol"
@@ -53,6 +54,31 @@ var (
 	// resctrlGroupList is the list of resctrl groups to be reconcile
 	resctrlGroupList = []string{LSRResctrlGroup, LSResctrlGroup, BEResctrlGroup}
 )
+
+type ResctrlConfig struct {
+	LLC LLC `json:"LLC,omitempty"`
+	MB  MB  `json:"MB,omitempty"`
+}
+
+type LLC struct {
+	Schemata         SchemataConfig           `json:"schemata,omitempty"`
+	SchemataPerCache []SchemataPerCacheConfig `json:"schemataPerCache,omitempty"`
+}
+
+type MB struct {
+	Schemata         SchemataConfig           `json:"schemata,omitempty"`
+	SchemataPerCache []SchemataPerCacheConfig `json:"schemataPerCache,omitempty"`
+}
+
+type SchemataConfig struct {
+	Percent int   `json:"percent,omitempty"`
+	Range   []int `json:"range,omitempty"`
+}
+
+type SchemataPerCacheConfig struct {
+	CacheID        int `json:"cacheid,omitempty"`
+	SchemataConfig `json:",inline"`
+}
 
 // TODO:@Bowen choose parser there or in engine, should we init with some parameters?
 type plugin struct {
@@ -106,15 +132,30 @@ func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
 	var resctrlInfo *protocol.Resctrl
 	if v, ok := podCtx.Request.Annotations[ResctrlAnno]; ok {
 		// TODO:@Bowen just save schemata or more info for policy?
-		qos := "be" // find qos from cgroup name? better idea?
-		resctrlInfo = p.abstractResctrlInfo(podCtx.Request.PodMeta.Name, v, qos)
+		//qos := "be" // find qos from cgroup name? better idea?
+		//resctrlInfo = p.abstractResctrlInfo(podCtx.Request.PodMeta.Name, v, qos)
+		klog.Infof("=========== get Anno, value is %s", v)
+		// Parse the JSON value into the BlockIO struct
+		var res ResctrlConfig
+		err := json.Unmarshal([]byte(v), &res)
+		if err != nil {
+			klog.Errorf("error is %v", err)
+			//panic(err)
+		}
+
+		// Print the parsed data
+		klog.Infof("resctrl: %v", res)
+		if res.MB.Schemata.Percent != 0 && res.MB.Schemata.Range != nil {
+			klog.Infof("resctrl MB is : %v", res.MB)
+		}
 	}
-	err := system.InitCatGroupIfNotExist(resctrlInfo.Closid)
+	err := system.InitCatGroupIfNotExist(podCtx.Request.PodMeta.UID)
 	if err != nil {
 		// TODO:@Bowen how to handle create error?
+		klog.Errorf("error is %v", err)
 	}
 
-	updater := resourceexecutor.NewResctrlSchemataResource(resctrlInfo.Closid, resctrlInfo.Schemata)
+	updater := resourceexecutor.NewResctrlSchemataResource(podCtx.Request.PodMeta.UID, "MB:0=80;1=80;2=100;3=100")
 	updater.MergeUpdate()
 	podCtx.Response.Resources.Resctrl = resctrlInfo
 	return nil
@@ -126,12 +167,18 @@ func (p *plugin) SetContainerResctrlResources(proto protocol.HooksProtocol) erro
 		return fmt.Errorf("container protocol is nil for plugin %v", name)
 	}
 
-	resource := &protocol.Resctrl{
-		Schemata: "",
-		Hook:     "",
-		Closid:   string(apiext.QoSBE),
+	//resource := &protocol.Resctrl{
+	//	Schemata: "",
+	//	Hook:     "",
+	//	Closid:   string(apiext.QoSBE),
+	//}
+	if _, ok := containerCtx.Request.PodAnnotations[ResctrlAnno]; ok {
+		containerCtx.Response.Resources.Resctrl = &protocol.Resctrl{
+			Schemata: "",
+			Hook:     "",
+			Closid:   containerCtx.Request.PodMeta.UID,
+		}
 	}
-	containerCtx.Response.Resources.Resctrl = resource
 	// add parent pid into right ctrl group
 
 	return nil

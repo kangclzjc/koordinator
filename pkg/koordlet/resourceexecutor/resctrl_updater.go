@@ -62,8 +62,8 @@ func NewResctrlSchemataResource(group, schemata string) ResourceUpdater {
 	schemataRaw.ParseResctrlSchemata(schemata, -1)
 	schemataStr := strings.Join(
 		[]string{schemataRaw.L3String(), schemataRaw.MBString()}, "")
-	klog.V(6).Infof("generate new resctrl schemata resource, file %s, key %s, value %s",
-		schemataFile, schemataKey, schemataStr)
+	klog.Infof("generate new resctrl schemata resource, file %s, key %s, value %s, schemata is %s",
+		schemataFile, schemataKey, schemataStr, schemata)
 	return &ResctrlSchemataResourceUpdater{
 		DefaultResourceUpdater: DefaultResourceUpdater{
 			key:        schemataKey,
