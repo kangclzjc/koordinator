@@ -61,11 +61,16 @@ func NewResctrlSchemataResource(group, schemata string) ResourceUpdater {
 	schemataRaw := sysutil.NewResctrlSchemataRaw(ids).WithL3Num(len(ids))
 	schemataRaw.ParseResctrlSchemata(schemata, -1)
 	items := []string{}
-	if validLLC, _ := schemataRaw.ValidateL3(); validLLC {
-		items = append(items, schemataRaw.L3String())
-	}
-	if validMB, _ := schemataRaw.ValidateMB(); validMB {
-		items = append(items, schemataRaw.MBString())
+	for _, item := range []struct {
+		validFunc func() (bool, string)
+		value     func() string
+	}{
+		{validFunc: schemataRaw.ValidateL3, value: schemataRaw.L3String},
+		{validFunc: schemataRaw.ValidateMB, value: schemataRaw.MBString},
+	} {
+		if valid, _ := item.validFunc(); valid {
+			items = append(items, item.value())
+		}
 	}
 	schemataStr := strings.Join(items, "")
 	klog.V(6).Infof("generate new resctrl schemata resource, file %s, key %s, value %s",
