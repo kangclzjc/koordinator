@@ -344,6 +344,11 @@ func (r *ResctrlSchemataRaw) ValidateL3() (bool, string) {
 	if r.L3Num != len(r.L3) {
 		return false, "unmatched L3 number and CAT infos"
 	}
+	for _, value := range r.L3 {
+		if value <= 0 {
+			return false, "wrong value of L3 mask"
+		}
+	}
 	return true, ""
 }
 
@@ -353,6 +358,11 @@ func (r *ResctrlSchemataRaw) ValidateMB() (bool, string) {
 	}
 	if len(r.MB) <= 0 {
 		return false, "no MBA info"
+	}
+	for _, value := range r.MB {
+		if value <= 0 {
+			return false, "wrong value of MB mask"
+		}
 	}
 	return true, ""
 }
@@ -570,8 +580,8 @@ func InitCatGroupIfNotExist(group string) error {
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("check dir %v for group %s but got unexpected err: %v", path, group, err)
 	}
+	// TODO:@Bowen add constraint to check ctrl group number?
 	err = os.Mkdir(path, 0755)
-	// TODO: add constraint to check group number?
 	if err != nil {
 		resctrlErr := GetCMDStatus()
 		return fmt.Errorf("create dir %v failed for group %s, err: %v",
