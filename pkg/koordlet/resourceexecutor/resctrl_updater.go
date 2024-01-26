@@ -59,7 +59,10 @@ func NewResctrlSchemataResource(group, schemata string) ResourceUpdater {
 	// to obtain cache ids to replace the current method.
 	ids, _ := sysutil.CacheIdsCacheFunc()
 	schemataRaw := sysutil.NewResctrlSchemataRaw(ids).WithL3Num(len(ids))
-	schemataRaw.ParseResctrlSchemata(schemata, -1)
+	err := schemataRaw.ParseResctrlSchemata(schemata, -1)
+	if err != nil {
+		klog.Errorf("failed to parse %v", err)
+	}
 	items := []string{}
 	for _, item := range []struct {
 		validFunc func() (bool, string)
@@ -73,8 +76,8 @@ func NewResctrlSchemataResource(group, schemata string) ResourceUpdater {
 		}
 	}
 	schemataStr := strings.Join(items, "")
-	klog.V(6).Infof("generate new resctrl schemata resource, file %s, key %s, value %s",
-		schemataFile, schemataKey, schemataStr)
+	klog.Infof("generate new resctrl schemata resource, file %s, key %s, value %s, schemata %s",
+		schemataFile, schemataKey, schemataStr, schemata)
 	return &ResctrlSchemataResourceUpdater{
 		DefaultResourceUpdater: DefaultResourceUpdater{
 			key:        schemataKey,

@@ -121,6 +121,7 @@ func (p *plugin) Register(op hooks.Options) {
 	//    p.engine = ARMEngine{}
 	//}
 	p.engine.Rebuild()
+	p.executor = op.Executor
 }
 
 func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
@@ -156,7 +157,8 @@ func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
 	}
 
 	updater := resourceexecutor.NewResctrlSchemataResource(podCtx.Request.PodMeta.UID, "MB:0=80;1=80;2=100;3=100")
-	updater.MergeUpdate()
+	p.executor.Update(true, updater)
+	//updater.MergeUpdate()
 	podCtx.Response.Resources.Resctrl = resctrlInfo
 	return nil
 }

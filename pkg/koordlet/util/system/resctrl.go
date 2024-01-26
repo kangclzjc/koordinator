@@ -401,7 +401,7 @@ func (r *ResctrlSchemataRaw) ParseResctrlSchemata(content string, l3Num int) err
 	} {
 		maskMap := schemataMap[t.prefix]
 		if maskMap == nil {
-			klog.V(5).Infof("read resctrl schemata of %s aborted, mask not found", t.prefix)
+			klog.Infof("read resctrl schemata of %s aborted, mask not found", t.prefix)
 			continue
 		}
 		if l3Num == -1 {
