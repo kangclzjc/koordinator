@@ -193,7 +193,7 @@ func (p *plugin) RemovePodResctrlResources(proto protocol.HooksProtocol) error {
 	}
 
 	if podCtx.Request.Annotations[ResctrlAnno] != "" {
-		if err := os.Remove(system.GetResctrlGroupRootDirPath(podCtx.Request.PodMeta.Name)); err != nil {
+		if err := os.Remove(system.GetResctrlGroupRootDirPath(podCtx.Request.PodMeta.UID)); err != nil {
 			return fmt.Errorf("cannot remove ctrl group, err: %w", err)
 		}
 	}
