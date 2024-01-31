@@ -11,7 +11,7 @@ import (
 	koordletutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util"
 )
 
-var cgroupReader = resourceexecutor.NewCgroupReader()
+var cgroupReader = resourceexecutor.CgroupV2Reader{}
 
 type Resctrl struct {
 	L3 map[int]string
@@ -112,6 +112,7 @@ func GetPodCgroupNewTaskIds(podMeta *statesinformer.PodMeta, tasksMap map[int32]
 			continue
 		}
 
+		klog.Infof("--------------- current ContainerDir is %s", containerDir)
 		ids, err := GetContainerCgroupNewTaskIds(containerDir, tasksMap)
 		if err != nil {
 			klog.Warningf("failed to get pod container cgroup task ids for container %s/%s/%s, err: %s",
