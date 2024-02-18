@@ -17,6 +17,7 @@ limitations under the License.
 package reconciler
 
 import (
+	"encoding/json"
 	"sync"
 	"time"
 
@@ -318,7 +319,7 @@ func (c *reconciler) reconcilePodCgroup(stopCh <-chan struct{}) {
 			curTaskMaps := map[string]map[int32]struct{}{}
 			//var err error
 			for _, podMeta := range podsMeta {
-				if _, ok := podMeta.Pod.Annotations[resctrl.ResctrlAnno]; ok {
+				if v, ok := podMeta.Pod.Annotations[resctrl.ResctrlAnno]; ok {
 					group := string(podMeta.Pod.UID)
 					err := system.InitCatGroupIfNotExist(group)
 					if err != nil {
@@ -326,7 +327,28 @@ func (c *reconciler) reconcilePodCgroup(stopCh <-chan struct{}) {
 						klog.Errorf("error is %v", err)
 					}
 
-					updater := resourceexecutor.NewResctrlSchemataResource(group, "MB:0=80;1=80;2=100;3=100")
+					var res resctrl.ResctrlConfig
+					err = json.Unmarshal([]byte(v), &res)
+					if err != nil {
+						klog.Errorf("error is %v", err)
+						//panic(err)
+						continue
+					}
+
+					// Print the parsed data
+					klog.Infof("resctrl: %v", res)
+					if res.MB.Schemata.Percent != 0 && res.MB.Schemata.Range != nil {
+						klog.Infof("resctrl MB is : %v", res.MB)
+					}
+					err = system.InitCatGroupIfNotExist(group)
+					if err != nil {
+						// TODO:@Bowen how to handle create error?
+						klog.Errorf("error is %v", err)
+					}
+
+					schemata := resctrl.ParseSchemata(res)
+
+					updater := resourceexecutor.NewResctrlSchemataResource(group, schemata)
 					c.executor.Update(true, updater)
 					// TODO@kang: parse annotation
 					// TODO@kang: reconcile schemata

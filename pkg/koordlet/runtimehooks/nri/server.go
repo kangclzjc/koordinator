@@ -187,6 +187,7 @@ func (p *NriServer) CreateContainer(pod *api.PodSandbox, container *api.Containe
 }
 
 func (p *NriServer) UpdateContainer(pod *api.PodSandbox, container *api.Container) ([]*api.ContainerUpdate, error) {
+
 	containerCtx := &protocol.ContainerContext{}
 	containerCtx.FromNri(pod, container)
 	// todo: return error or bypass error based on PluginFailurePolicy
@@ -203,7 +204,6 @@ func (p *NriServer) UpdateContainer(pod *api.PodSandbox, container *api.Containe
 		klog.Errorf("containerCtx nri done failed: %v", err)
 		return nil, nil
 	}
-
 	klog.V(6).Infof("handle NRI UpdateContainer successfully, container %s/%s/%s",
 		pod.GetNamespace(), pod.GetName(), container.GetName())
 	return []*api.ContainerUpdate{update}, nil
