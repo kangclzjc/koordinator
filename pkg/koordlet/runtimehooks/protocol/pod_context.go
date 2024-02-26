@@ -286,16 +286,25 @@ func (p *PodContext) injectForExt() {
 		}
 	}
 	if p.Response.Resources.Resctrl != nil {
-		// eventHelper := audit.V(3).Pod(p.Request.PodMeta.Namespace, p.Request.PodMeta.Name).Reason("runtime-hooks").Message("set pod resctrl limit to %v", *p.Response.Resources.Resctrl)
-		// updater, err := injectResctrl()
-		// create ctrl group and monitor group
+		klog.Infof("-------kkk------%s %s", p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.Schemata)
+		eventHelper := audit.V(3).Pod(p.Request.PodMeta.Namespace, p.Request.PodMeta.Name).Reason("runtime-hooks").Message(
+			"set pod LLC/MB limit to %v", *p.Response.Resources.Resctrl)
+		updater, err := injectResctrl(p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.Schemata, eventHelper, p.executor)
+
+		if err != nil {
+			klog.Infof("set pod %v/%v LLC/MB limit %v on cgroup parent %v failed, error %v", p.Request.PodMeta.Namespace,
+				p.Request.PodMeta.Name, p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.Schemata, err)
+		} else {
+			p.updaters = append(p.updaters, updater)
+			klog.V(5).Infof("set pod %v/%v memory limit %v on cgroup parent %v",
+				p.Request.PodMeta.Namespace, p.Request.PodMeta.Name, *p.Response.Resources.Resctrl, p.Request.CgroupParent)
+		}
+
 	}
 }
 
 func (p *PodContext) removeForExt() {
 	if p.Response.Resources.Resctrl != nil {
-		// eventHelper := audit.V(3).Pod(p.Request.PodMeta.Namespace, p.Request.PodMeta.Name).Reason("runtime-hooks").Message("set pod resctrl limit to %v", *p.Response.Resources.Resctrl)
-		// updater, err := removeResctrl()
-		// remove ctrl group and monitor group
+		klog.Infof("-------kkk------%s %s", p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.Schemata)
 	}
 }

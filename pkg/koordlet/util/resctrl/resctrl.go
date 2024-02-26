@@ -30,12 +30,12 @@ type ResctrlEngine interface {
 	GetCurrentCtrlGroups() map[string]Resctrl
 	Config(schemata string) // TODO:@Bowen use schemata or use policy to parse this string?
 	GetConfig() map[string]string
-	RegisterApp(podid, annotation, closid string) error
+	RegisterApp(podid, annotation string) error
 	GetApp(podid string) (App, error)
 }
 
-func NewRDTEngine() RDTEngine {
-	return RDTEngine{
+func NewRDTEngine() ResctrlEngine {
+	return &RDTEngine{
 		Apps:       make(map[string]App),
 		CtrlGroups: make(map[string]Resctrl),
 	}
@@ -66,10 +66,9 @@ func (R RDTEngine) GetConfig() map[string]string {
 }
 
 // annotation is resctl string
-func (R RDTEngine) RegisterApp(podid, annotation, closid string) error {
+func (R RDTEngine) RegisterApp(podid, annotation string) error {
 	app := App{
 		Resctrl: Resctrl{},
-		Closid:  closid,
 	}
 	R.Apps[podid] = app
 	return nil

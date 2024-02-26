@@ -125,17 +125,22 @@ func (p *plugin) Register(op hooks.Options) {
 }
 
 func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
+	klog.Infof("=========== SetPodResctrlResources========")
+
 	podCtx, ok := proto.(*protocol.PodContext)
 	if !ok {
 		return fmt.Errorf("pod protocol is nil for plugin %v", name)
 	}
 
-	var resctrlInfo *protocol.Resctrl
+	resctrlInfo := &protocol.Resctrl{}
+
 	if v, ok := podCtx.Request.Annotations[ResctrlAnno]; ok {
 		// TODO:@Bowen just save schemata or more info for policy?
 		//qos := "be" // find qos from cgroup name? better idea?
 		//resctrlInfo = p.abstractResctrlInfo(podCtx.Request.PodMeta.Name, v, qos)
 		klog.Infof("=========== get Anno, value is %s", v)
+		p.engine.RegisterApp(podCtx.Request.PodMeta.UID, v)
+
 		// Parse the JSON value into the BlockIO struct
 		var res ResctrlConfig
 		err := json.Unmarshal([]byte(v), &res)
@@ -150,18 +155,20 @@ func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
 		if res.MB.Schemata.Percent != 0 && res.MB.Schemata.Range != nil {
 			klog.Infof("resctrl MB is : %v", res.MB)
 		}
-		err = system.InitCatGroupIfNotExist(podCtx.Request.PodMeta.UID)
-		if err != nil {
-			// TODO:@Bowen how to handle create error?
-			klog.Errorf("error is %v", err)
-		}
+		//err = system.InitCatGroupIfNotExist(podCtx.Request.PodMeta.UID)
+		//if err != nil {
+		//	// TODO:@Bowen how to handle create error?
+		//	klog.Errorf("error is %v", err)
+		//}
 
 		schemata := ParseSchemata(res)
 
 		//updater := resourceexecutor.NewResctrlSchemataResource(podCtx.Request.PodMeta.UID, "MB:0=80;1=80;2=100;3=100")
 		klog.Info("----------schemata string is %s", schemata)
-		updater := resourceexecutor.NewResctrlSchemataResource(podCtx.Request.PodMeta.UID, schemata)
-		p.executor.Update(true, updater)
+		resctrlInfo.Schemata = schemata
+		resctrlInfo.Closid = "koordlet-" + podCtx.Request.PodMeta.UID
+		//updater := resourceexecutor.NewResctrlSchemataResource(podCtx.Request.PodMeta.UID, schemata)
+		//p.executor.Update(true, updater)
 		//updater.MergeUpdate()
 		podCtx.Response.Resources.Resctrl = resctrlInfo
 	}
@@ -184,7 +191,7 @@ func (p *plugin) SetContainerResctrlResources(proto protocol.HooksProtocol) erro
 		containerCtx.Response.Resources.Resctrl = &protocol.Resctrl{
 			Schemata: "",
 			Hook:     "",
-			Closid:   containerCtx.Request.PodMeta.UID,
+			Closid:   "koordlet-" + containerCtx.Request.PodMeta.UID,
 		}
 	}
 	// add parent pid into right ctrl group

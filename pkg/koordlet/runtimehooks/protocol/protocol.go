@@ -166,6 +166,14 @@ func injectMemoryLimit(cgroupParent string, memoryLimit int64, a *audit.EventHel
 	return updater, nil
 }
 
+func injectResctrl(closid string, schemata string, helper *audit.EventHelper, executor resourceexecutor.ResourceUpdateExecutor) (resourceexecutor.ResourceUpdater, error) {
+	updater, err := resourceexecutor.NewResctrlSchemataResource(closid, schemata)
+	if err != nil {
+		return nil, err
+	}
+	return updater, nil
+}
+
 func injectCPUBvt(cgroupParent string, bvtValue int64, a *audit.EventHelper, e resourceexecutor.ResourceUpdateExecutor) (resourceexecutor.ResourceUpdater, error) {
 	bvtValueStr := strconv.FormatInt(bvtValue, 10)
 	updater, err := resourceexecutor.DefaultCgroupUpdaterFactory.New(sysutil.CPUBVTWarpNsName, cgroupParent, bvtValueStr, a)

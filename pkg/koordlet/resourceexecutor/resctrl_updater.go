@@ -51,7 +51,12 @@ func (r *ResctrlSchemataResourceUpdater) Clone() ResourceUpdater {
 	}
 }
 
-func NewResctrlSchemataResource(group, schemata string) ResourceUpdater {
+func NewResctrlSchemataResource(group, schemata string) (ResourceUpdater, error) {
+	err := sysutil.InitCatGroupIfNotExist(group)
+	if err != nil {
+		// TODO:@Bowen how to handle create error?
+		klog.Errorf("error is %v", err)
+	}
 	schemataFile := sysutil.ResctrlSchemata.Path(group)
 	schemataKey := sysutil.ResctrlSchemataName + ":" + schemataFile
 	// The current assumption is that the cache ids obtained through
@@ -59,7 +64,7 @@ func NewResctrlSchemataResource(group, schemata string) ResourceUpdater {
 	// to obtain cache ids to replace the current method.
 	ids, _ := sysutil.CacheIdsCacheFunc()
 	schemataRaw := sysutil.NewResctrlSchemataRaw(ids).WithL3Num(len(ids))
-	err := schemataRaw.ParseResctrlSchemata(schemata, -1)
+	err = schemataRaw.ParseResctrlSchemata(schemata, -1)
 	if err != nil {
 		klog.Errorf("failed to parse %v", err)
 	}
@@ -86,7 +91,7 @@ func NewResctrlSchemataResource(group, schemata string) ResourceUpdater {
 			updateFunc: UpdateResctrlSchemataFunc,
 		},
 		schemataRaw: schemataRaw,
-	}
+	}, err
 }
 
 func NewResctrlL3SchemataResource(group, schemataDelta string, l3Num int) ResourceUpdater {
