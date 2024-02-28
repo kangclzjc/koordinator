@@ -18,6 +18,7 @@ package runtimehooks
 
 import (
 	"flag"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks/resctrl"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -74,6 +75,9 @@ const (
 	// owner: @saintube @zwzhang0107
 	// alpha: v1.4
 	CoreSched featuregate.Feature = "CoreSched"
+
+	//TODO@kang: add comment
+	Resctrl featuregate.Feature = "Resctrl"
 )
 
 var (
@@ -84,6 +88,7 @@ var (
 		BatchResource:    {Default: true, PreRelease: featuregate.Beta},
 		CPUNormalization: {Default: false, PreRelease: featuregate.Alpha},
 		CoreSched:        {Default: false, PreRelease: featuregate.Alpha},
+		Resctrl:          {Default: true, PreRelease: featuregate.Beta},
 	}
 
 	runtimeHookPlugins = map[featuregate.Feature]HookPlugin{
@@ -93,6 +98,7 @@ var (
 		BatchResource:    batchresource.Object(),
 		CPUNormalization: cpunormalization.Object(),
 		CoreSched:        coresched.Object(),
+		Resctrl:          resctrl.Object(),
 	}
 )
 
