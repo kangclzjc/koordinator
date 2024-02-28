@@ -27,9 +27,9 @@ import (
 )
 
 type PodMeta struct {
-	Pod       *corev1.Pod
-	CgroupDir string
-	//ContainerTaskIds map[string][]uint64
+	Pod              *corev1.Pod
+	CgroupDir        string
+	ContainerTaskIds map[string][]int32
 }
 
 func (in *PodMeta) DeepCopy() *PodMeta {
