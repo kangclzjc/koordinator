@@ -316,6 +316,7 @@ func (c *reconciler) reconcilePodCgroup(stopCh <-chan struct{}) {
 			//			curTaskMaps := map[string]map[int32]struct{}{}
 			//var err error
 			for _, podMeta := range podsMeta {
+
 				/*
 					if v, ok := podMeta.Pod.Annotations[resctrl.ResctrlAnno]; ok {
 						group := string(podMeta.Pod.UID)

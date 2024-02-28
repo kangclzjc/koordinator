@@ -1,14 +1,18 @@
 package util
 
 import (
+	"encoding/json"
 	"fmt"
-
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/klog/v2"
-
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
 	koordletutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util"
+	sysutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
+	"io/ioutil"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
 var cgroupReader = resourceexecutor.CgroupV2Reader{}
@@ -19,14 +23,39 @@ type Resctrl struct {
 }
 
 type App struct {
-	Resctrl Resctrl
+	Resctrl *sysutil.ResctrlSchemataRaw
 	// Hooks   Hook
 	Closid string
 }
 
+type ResctrlConfig struct {
+	LLC LLC `json:"LLC,omitempty"`
+	MB  MB  `json:"MB,omitempty"`
+}
+
+type LLC struct {
+	Schemata         SchemataConfig           `json:"schemata,omitempty"`
+	SchemataPerCache []SchemataPerCacheConfig `json:"schemataPerCache,omitempty"`
+}
+
+type MB struct {
+	Schemata         SchemataConfig           `json:"schemata,omitempty"`
+	SchemataPerCache []SchemataPerCacheConfig `json:"schemataPerCache,omitempty"`
+}
+
+type SchemataConfig struct {
+	Percent int   `json:"percent,omitempty"`
+	Range   []int `json:"range,omitempty"`
+}
+
+type SchemataPerCacheConfig struct {
+	CacheID        int `json:"cacheid,omitempty"`
+	SchemataConfig `json:",inline"`
+}
+
 // TODO: @Bowen we should talk about this interface functions' meaning?
 type ResctrlEngine interface {
-	Rebuild() // rebuild the current control group
+	Rebuild() map[string]App // rebuild the current control group
 	GetCurrentCtrlGroups() map[string]Resctrl
 	Config(schemata string) // TODO:@Bowen use schemata or use policy to parse this string?
 	GetConfig() map[string]string
@@ -47,34 +76,117 @@ type RDTEngine struct {
 	Policy     ResctrlPolicy
 }
 
-func (R RDTEngine) Rebuild() {
-	//TODO implement me
+func (R *RDTEngine) Rebuild() map[string]App {
+	// 获取 resctrl 文件系统根目录
+	root := sysutil.GetResctrlSubsystemDirPath()
+
+	// 遍历根目录下的所有目录
+	files, err := os.ReadDir(root)
+	if err != nil {
+		klog.Errorf("read %s failed err is %v", root, err)
+		return nil
+	}
+
+	for _, file := range files {
+		// 判断是否是目录
+		if file.IsDir() && strings.HasPrefix(file.Name(), "koordlet") {
+			// 判断是否是控制组
+			path := filepath.Join(root, file.Name(), "schemata")
+			if _, err := os.Stat(path); err == nil {
+				content, err := ioutil.ReadFile(path)
+				if err != nil {
+					fmt.Println(err)
+					return R.Apps
+				}
+				schemata := string(content)
+				ids, _ := sysutil.CacheIdsCacheFunc()
+				schemataRaw := sysutil.NewResctrlSchemataRaw(ids).WithL3Num(len(ids))
+				err = schemataRaw.ParseResctrlSchemata(schemata, -1)
+				if err != nil {
+					klog.Errorf("failed to parse %v", err)
+				}
+				podid := strings.TrimPrefix(file.Name(), "koordlet-")
+				R.Apps[podid] = App{
+					Resctrl: schemataRaw,
+					Closid:  file.Name(),
+				}
+			}
+		}
+	}
+	return R.Apps
 }
 
-func (R RDTEngine) GetCurrentCtrlGroups() map[string]Resctrl {
+func (R *RDTEngine) GetCurrentCtrlGroups() map[string]Resctrl {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (R RDTEngine) Config(config string) {
+func (R *RDTEngine) Config(config string) {
 	//TODO implement me
 }
 
-func (R RDTEngine) GetConfig() map[string]string {
+func (R *RDTEngine) GetConfig() map[string]string {
 	//TODO implement me
 	panic("implement me")
 }
 
 // annotation is resctl string
-func (R RDTEngine) RegisterApp(podid, annotation string) error {
+func (R *RDTEngine) RegisterApp(podid, annotation string) error {
+	// Parse the JSON value into the BlockIO struct
+	var res ResctrlConfig
+	err := json.Unmarshal([]byte(annotation), &res)
+	if err != nil {
+		klog.Errorf("error is %v", err)
+		//panic(err)
+		return nil
+	}
+
+	// Print the parsed data
+	klog.Infof("resctrl: %v", res)
+	if res.MB.Schemata.Percent != 0 && res.MB.Schemata.Range != nil {
+		klog.Infof("resctrl MB is : %v", res.MB)
+	}
+
+	schemata := ParseSchemata(res)
 	app := App{
-		Resctrl: Resctrl{},
+		Resctrl: schemata,
+		Closid:  "koordlet-" + podid,
 	}
 	R.Apps[podid] = app
 	return nil
 }
 
-func (R RDTEngine) GetApp(id string) (App, error) {
+func calculateIntel(mbaPercent int64) int64 {
+	if mbaPercent%10 != 0 {
+		actualPercent := mbaPercent/10*10 + 10
+		klog.V(4).Infof("cat MBA must multiple of 10, mbaPercentConfig is %d, actualMBAPercent will be %d",
+			mbaPercent, actualPercent)
+		return actualPercent
+	}
+
+	return mbaPercent
+}
+
+func ParseSchemata(config ResctrlConfig) *sysutil.ResctrlSchemataRaw {
+	ids, _ := sysutil.CacheIdsCacheFunc()
+	schemataRaw := sysutil.NewResctrlSchemataRaw(ids).WithL3Num(len(ids))
+	if config.MB.Schemata.Percent != 0 {
+		percent := calculateIntel(int64(config.MB.Schemata.Percent))
+		for k, _ := range schemataRaw.MB {
+			schemataRaw.MB[k] = percent
+		}
+	}
+
+	if config.MB.SchemataPerCache != nil {
+		for _, v := range config.MB.SchemataPerCache {
+			percent := calculateIntel(int64(v.Percent))
+			schemataRaw.MB[v.CacheID] = percent
+		}
+	}
+	return schemataRaw
+}
+
+func (R *RDTEngine) GetApp(id string) (App, error) {
 	if v, ok := R.Apps[id]; ok {
 		return v, nil
 	} else {

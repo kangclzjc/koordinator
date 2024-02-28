@@ -17,7 +17,6 @@ limitations under the License.
 package resctrl
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks"
@@ -26,8 +25,8 @@ import (
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
 	util "github.com/koordinator-sh/koordinator/pkg/koordlet/util/resctrl"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
-	sysutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
 	rmconfig "github.com/koordinator-sh/koordinator/pkg/runtimeproxy/config"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 	"os"
 )
@@ -55,36 +54,12 @@ var (
 	resctrlGroupList = []string{LSRResctrlGroup, LSResctrlGroup, BEResctrlGroup}
 )
 
-type ResctrlConfig struct {
-	LLC LLC `json:"LLC,omitempty"`
-	MB  MB  `json:"MB,omitempty"`
-}
-
-type LLC struct {
-	Schemata         SchemataConfig           `json:"schemata,omitempty"`
-	SchemataPerCache []SchemataPerCacheConfig `json:"schemataPerCache,omitempty"`
-}
-
-type MB struct {
-	Schemata         SchemataConfig           `json:"schemata,omitempty"`
-	SchemataPerCache []SchemataPerCacheConfig `json:"schemataPerCache,omitempty"`
-}
-
-type SchemataConfig struct {
-	Percent int   `json:"percent,omitempty"`
-	Range   []int `json:"range,omitempty"`
-}
-
-type SchemataPerCacheConfig struct {
-	CacheID        int `json:"cacheid,omitempty"`
-	SchemataConfig `json:",inline"`
-}
-
 // TODO:@Bowen choose parser there or in engine, should we init with some parameters?
 type plugin struct {
-	engine   util.ResctrlEngine
-	rule     *Rule
-	executor resourceexecutor.ResourceUpdateExecutor
+	engine         util.ResctrlEngine
+	rule           *Rule
+	executor       resourceexecutor.ResourceUpdateExecutor
+	statesInformer statesinformer.StatesInformer
 }
 
 var singleton *plugin
@@ -120,8 +95,26 @@ func (p *plugin) Register(op hooks.Options) {
 	//} else {
 	//    p.engine = ARMEngine{}
 	//}
-	p.engine.Rebuild()
+	app := p.engine.Rebuild()
 	p.executor = op.Executor
+	p.statesInformer = op.StatesInformer
+	podsMeta := p.statesInformer.GetAllPods()
+	currentPods := make(map[string]*corev1.Pod)
+	for _, podMeta := range podsMeta {
+		pod := podMeta.Pod
+		if _, ok := podMeta.Pod.Annotations[ResctrlAnno]; ok {
+			group := string(podMeta.Pod.UID)
+			currentPods[group] = pod
+		}
+	}
+
+	for k, v := range app {
+		if _, ok := currentPods[k]; !ok {
+			if err := os.Remove(system.GetResctrlGroupRootDirPath(v.Closid)); err != nil {
+				klog.Errorf("cannot remove ctrl group, err: %w", err)
+			}
+		}
+	}
 }
 
 func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
@@ -141,32 +134,14 @@ func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
 		klog.Infof("=========== get Anno, value is %s", v)
 		p.engine.RegisterApp(podCtx.Request.PodMeta.UID, v)
 
-		// Parse the JSON value into the BlockIO struct
-		var res ResctrlConfig
-		err := json.Unmarshal([]byte(v), &res)
+		app, err := p.engine.GetApp(podCtx.Request.PodMeta.UID)
 		if err != nil {
-			klog.Errorf("error is %v", err)
-			//panic(err)
-			return nil
+			return err
 		}
-
-		// Print the parsed data
-		klog.Infof("resctrl: %v", res)
-		if res.MB.Schemata.Percent != 0 && res.MB.Schemata.Range != nil {
-			klog.Infof("resctrl MB is : %v", res.MB)
-		}
-		//err = system.InitCatGroupIfNotExist(podCtx.Request.PodMeta.UID)
-		//if err != nil {
-		//	// TODO:@Bowen how to handle create error?
-		//	klog.Errorf("error is %v", err)
-		//}
-
-		schemata := ParseSchemata(res)
-
 		//updater := resourceexecutor.NewResctrlSchemataResource(podCtx.Request.PodMeta.UID, "MB:0=80;1=80;2=100;3=100")
-		klog.Info("----------schemata string is %s", schemata)
-		resctrlInfo.Schemata = schemata
-		resctrlInfo.Closid = "koordlet-" + podCtx.Request.PodMeta.UID
+		klog.Info("----------schemata string is %s", app.Resctrl)
+		resctrlInfo.Schemata = app.Resctrl.MBString()
+		resctrlInfo.Closid = app.Closid
 		//updater := resourceexecutor.NewResctrlSchemataResource(podCtx.Request.PodMeta.UID, schemata)
 		//p.executor.Update(true, updater)
 		//updater.MergeUpdate()
@@ -225,35 +200,3 @@ func (p *plugin) abstractResctrlInfo(podId, annotation, qos string) (resource *p
 
 	return resource
 }
-
-func ParseSchemata(config ResctrlConfig) string {
-	ids, _ := sysutil.CacheIdsCacheFunc()
-	schemataRaw := sysutil.NewResctrlSchemataRaw(ids).WithL3Num(len(ids))
-	if config.MB.Schemata.Percent != 0 {
-		percent := calculateIntel(int64(config.MB.Schemata.Percent))
-		for k, _ := range schemataRaw.MB {
-			schemataRaw.MB[k] = percent
-		}
-	}
-
-	if config.MB.SchemataPerCache != nil {
-		for _, v := range config.MB.SchemataPerCache {
-			percent := calculateIntel(int64(v.Percent))
-			schemataRaw.MB[v.CacheID] = percent
-		}
-	}
-	return schemataRaw.MBString()
-}
-
-func calculateIntel(mbaPercent int64) int64 {
-	if mbaPercent%10 != 0 {
-		actualPercent := mbaPercent/10*10 + 10
-		klog.V(4).Infof("cat MBA must multiple of 10, mbaPercentConfig is %d, actualMBAPercent will be %d",
-			mbaPercent, actualPercent)
-		return actualPercent
-	}
-
-	return mbaPercent
-}
-
-// func (p *plugin)
