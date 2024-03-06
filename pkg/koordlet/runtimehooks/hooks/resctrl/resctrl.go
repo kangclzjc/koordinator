@@ -18,14 +18,15 @@ package resctrl
 
 import (
 	"fmt"
+	apiext "github.com/koordinator-sh/koordinator/apis/extension"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/protocol"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/reconciler"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/rule"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
 	util "github.com/koordinator-sh/koordinator/pkg/koordlet/util/resctrl"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
-	rmconfig "github.com/koordinator-sh/koordinator/pkg/runtimeproxy/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 	"os"
@@ -46,7 +47,6 @@ const (
 	ruleNameForNodeSLO  = name + " (nodeSLO)"
 	ruleNameForNodeMeta = name + " (nodeMeta)"
 	RDT                 = true
-	ResctrlAnno         = "node.koordinator.sh/resctrl"
 )
 
 var (
@@ -78,13 +78,14 @@ func newPlugin() *plugin {
 }
 
 func (p *plugin) Register(op hooks.Options) {
-	hooks.Register(rmconfig.PreRunPodSandbox, name, description+" (pod)", p.SetPodResctrlResources)
-	hooks.Register(rmconfig.PreCreateContainer, name, description+" (pod)", p.SetContainerResctrlResources)
-	hooks.Register(rmconfig.PreRemoveRunPodSandbox, name, description+" (pod)", p.RemovePodResctrlResources)
+	//hooks.Register(rmconfig.PreRunPodSandbox, name, description+" (pod)", p.SetPodResctrlResources)
+	//hooks.Register(rmconfig.PreCreateContainer, name, description+" (pod)", p.SetContainerResctrlResources)
+	//hooks.Register(rmconfig.PreRemoveRunPodSandbox, name, description+" (pod)", p.RemovePodResctrlResources)
 	rule.Register(ruleNameForNodeSLO, description,
 		rule.WithParseFunc(statesinformer.RegisterTypeNodeSLOSpec, p.parseRuleForNodeSLO),
 		rule.WithUpdateCallback(p.ruleUpdateCbForNodeSLO))
-	//reconciler.RegisterCgroupReconciler(reconciler.PodLevel, sysutil.Resctrl, description+" (pod resctl schema)", p.SetPodResCtrlResources, reconciler.PodQOSFilter(), podQOSConditions...)
+	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlSchemata, description+" (pod resctl schema)", p.SetPodResctrlResources, reconciler.NoneFilter())
+	//reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlSchemata, description+" (pod resctl schema)", p.RemoveDeletedPodResctl, reconciler.NoneFilter())
 	//reconciler.RegisterCgroupReconciler(reconciler.ContainerTasks, sysutil.Resctrl, description+" (pod resctl taskids)", p.UpdatePodTaskIds, reconciler.PodQOSFilter(), podQOSConditions...)
 
 	if RDT {
@@ -102,7 +103,7 @@ func (p *plugin) Register(op hooks.Options) {
 	currentPods := make(map[string]*corev1.Pod)
 	for _, podMeta := range podsMeta {
 		pod := podMeta.Pod
-		if _, ok := podMeta.Pod.Annotations[ResctrlAnno]; ok {
+		if _, ok := podMeta.Pod.Annotations[apiext.ResctrlAnno]; ok {
 			group := string(podMeta.Pod.UID)
 			currentPods[group] = pod
 		}
@@ -127,7 +128,7 @@ func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
 
 	resctrlInfo := &protocol.Resctrl{}
 
-	if v, ok := podCtx.Request.Annotations[ResctrlAnno]; ok {
+	if v, ok := podCtx.Request.Annotations[apiext.ResctrlAnno]; ok {
 		// TODO:@Bowen just save schemata or more info for policy?
 		//qos := "be" // find qos from cgroup name? better idea?
 		//resctrlInfo = p.abstractResctrlInfo(podCtx.Request.PodMeta.Name, v, qos)
@@ -162,7 +163,7 @@ func (p *plugin) SetContainerResctrlResources(proto protocol.HooksProtocol) erro
 	//	Hook:     "",
 	//	Closid:   string(apiext.QoSBE),
 	//}
-	if _, ok := containerCtx.Request.PodAnnotations[ResctrlAnno]; ok {
+	if _, ok := containerCtx.Request.PodAnnotations[apiext.ResctrlAnno]; ok {
 		containerCtx.Response.Resources.Resctrl = &protocol.Resctrl{
 			Schemata: "",
 			Hook:     "",
@@ -180,7 +181,7 @@ func (p *plugin) RemovePodResctrlResources(proto protocol.HooksProtocol) error {
 		return fmt.Errorf("pod protocol is nil for plugin %v", name)
 	}
 
-	if podCtx.Request.Annotations[ResctrlAnno] != "" {
+	if podCtx.Request.Annotations[apiext.ResctrlAnno] != "" {
 		if err := os.Remove(system.GetResctrlGroupRootDirPath("koordlet-" + podCtx.Request.PodMeta.UID)); err != nil {
 			return fmt.Errorf("cannot remove ctrl group, err: %w", err)
 		}

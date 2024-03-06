@@ -132,6 +132,9 @@ func (R *RDTEngine) GetConfig() map[string]string {
 
 // annotation is resctl string
 func (R *RDTEngine) RegisterApp(podid, annotation string) error {
+	if _, ok := R.Apps[podid]; ok {
+		return fmt.Errorf("pod %s already registered", podid)
+	}
 	// Parse the JSON value into the BlockIO struct
 	var res ResctrlConfig
 	err := json.Unmarshal([]byte(annotation), &res)

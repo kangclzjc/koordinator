@@ -18,7 +18,7 @@ package resctrl
 
 import (
 	"fmt"
-	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks/resctrl"
+	apiext "github.com/koordinator-sh/koordinator/apis/extension"
 	"os"
 	"strconv"
 	"time"
@@ -462,7 +462,7 @@ func (r *resctrlReconcile) reconcileResctrlGroups(qosStrategy *slov1alpha1.Resou
 		pod := podMeta.Pod
 
 		// only QoS class level pod are considered
-		if _, ok := pod.Annotations[resctrl.ResctrlAnno]; ok {
+		if _, ok := pod.Annotations[apiext.ResctrlAnno]; ok {
 			continue
 		}
 		// only Running and Pending pods are considered

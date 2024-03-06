@@ -40,6 +40,7 @@ const (
 	// LabelPodMutatingUpdate is a label key that pods with `pod.koordinator.sh/mutating-update=true` will
 	// be mutated by Koordinator webhook when updating.
 	LabelPodMutatingUpdate = PodDomainPrefix + "/mutating-update"
+	ResctrlAnno            = "node.koordinator.sh/resctrl"
 )
 
 type AggregationType string
