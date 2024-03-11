@@ -291,17 +291,27 @@ func (p *PodContext) injectForExt() {
 		klog.Infof("-------kkk------%s %s", p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.Schemata)
 		eventHelper := audit.V(3).Pod(p.Request.PodMeta.Namespace, p.Request.PodMeta.Name).Reason("runtime-hooks").Message(
 			"set pod LLC/MB limit to %v", *p.Response.Resources.Resctrl)
-		updater, err := injectResctrl(p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.Schemata, eventHelper, p.executor)
-
-		if err != nil {
-			klog.Infof("set pod %v/%v LLC/MB limit %v on cgroup parent %v failed, error %v", p.Request.PodMeta.Namespace,
-				p.Request.PodMeta.Name, p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.Schemata, err)
-		} else {
-			p.updaters = append(p.updaters, updater)
-			klog.V(5).Infof("set pod %v/%v memory limit %v on cgroup parent %v",
-				p.Request.PodMeta.Namespace, p.Request.PodMeta.Name, *p.Response.Resources.Resctrl, p.Request.CgroupParent)
+		if p.Response.Resources.Resctrl.Closid != "" && p.Response.Resources.Resctrl.Schemata != "" {
+			updater, err := injectResctrl(p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.Schemata, eventHelper, p.executor)
+			if err != nil {
+				klog.Infof("set pod %v/%v LLC/MB limit %v on cgroup parent %v failed, error %v", p.Request.PodMeta.Namespace,
+					p.Request.PodMeta.Name, p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.Schemata, err)
+			} else {
+				p.updaters = append(p.updaters, updater)
+				klog.V(5).Infof("set pod %v/%v memory limit %v on cgroup parent %v",
+					p.Request.PodMeta.Namespace, p.Request.PodMeta.Name, *p.Response.Resources.Resctrl, p.Request.CgroupParent)
+			}
 		}
 
+		if len(p.Response.Resources.Resctrl.NewTaskIds) > 0 {
+			klog.Infof("============pod Context====== %v", p.Response.Resources.Resctrl.NewTaskIds)
+			updater, err := resourceexecutor.CalculateResctrlL3TasksResource(p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.NewTaskIds)
+			if err != nil {
+				klog.V(4).Infof("failed to get l3 tasks resource for group %s, err: %s", p.Response.Resources.Resctrl.Closid, err)
+			} else {
+				p.updaters = append(p.updaters, updater)
+			}
+		}
 	}
 }
 

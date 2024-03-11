@@ -35,6 +35,7 @@ import (
 type ReconcilerLevel string
 
 const (
+	AllPods        ReconcilerLevel = "allpods"
 	KubeQOSLevel   ReconcilerLevel = "kubeqos"
 	PodLevel       ReconcilerLevel = "pod"
 	ContainerLevel ReconcilerLevel = "container"

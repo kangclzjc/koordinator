@@ -88,7 +88,7 @@ func (p *plugin) Register(op hooks.Options) {
 	//reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlTasks, description+" (pod resctrl tasks)", p.RemoveDeletedPodResctl, reconciler.NoneFilter())
 	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlTasks, description+" (pod resctrl tasks)", p.UpdatePodTaskIds, reconciler.NoneFilter())
 
-	//reconciler.RegisterCgroupReconciler(reconciler.ContainerTasks, sysutil.Resctrl, description+" (pod resctl taskids)", p.UpdatePodTaskIds, reconciler.PodQOSFilter(), podQOSConditions...)
+	//reconciler.RegisterCgroupReconciler(reconciler.AllPods, system.ResctrlTasks, description+" (pod resctl taskids)", p.UpdatePodTaskIds, reconciler.NoneFilter())
 
 	if RDT {
 		p.engine = util.NewRDTEngine()
@@ -174,23 +174,31 @@ func (p *plugin) UpdatePodTaskIds(proto protocol.HooksProtocol) error {
 		}
 
 		newTaskIds := util.GetPodCgroupNewTaskIdsFromPodCtx(podCtx, curTaskMaps[group])
-		resource, err := resourceexecutor.CalculateResctrlL3TasksResource("koordlet-" + group, newTaskIds)
-		if err != nil {
-			klog.V(4).Infof("failed to get l3 tasks resource for group %s, err: %s", group, err)
+		resctrlInfo := &protocol.Resctrl{
+			Closid:     "koordlet-" + group,
+			NewTaskIds: make([]int32, 0),
+		}
+		resctrlInfo.NewTaskIds = newTaskIds
 
-		}
-		updated, err := p.executor.Update(false, resource)
-		if err != nil {
-			klog.Warningf("failed to write l3 cat policy on tasks for group %s, updated %v, err: %s", group, updated, err)
-		} else if updated {
-			klog.V(5).Infof("apply l3 cat tasks for group %s finished, updated %v, len(taskIds) %v", group, updated, len(newTaskIds))
-		} else {
-			klog.V(6).Infof("apply l3 cat tasks for group %s finished, updated %v, len(taskIds) %v", group, updated, len(newTaskIds))
-		}
+		podCtx.Response.Resources.Resctrl = resctrlInfo
 
-		if err != nil {
-			klog.Warningf("failed to apply l3 cat tasks for group %s, err %s", group, err)
-		}
+		//resource, err := resourceexecutor.CalculateResctrlL3TasksResource("koordlet-"+group, newTaskIds)
+		//if err != nil {
+		//	klog.V(4).Infof("failed to get l3 tasks resource for group %s, err: %s", group, err)
+		//
+		//}
+		//updated, err := p.executor.Update(false, resource)
+		//if err != nil {
+		//	klog.Warningf("failed to write l3 cat policy on tasks for group %s, updated %v, err: %s", group, updated, err)
+		//} else if updated {
+		//	klog.V(5).Infof("apply l3 cat tasks for group %s finished, updated %v, len(taskIds) %v", group, updated, len(newTaskIds))
+		//} else {
+		//	klog.V(6).Infof("apply l3 cat tasks for group %s finished, updated %v, len(taskIds) %v", group, updated, len(newTaskIds))
+		//}
+		//
+		//if err != nil {
+		//	klog.Warningf("failed to apply l3 cat tasks for group %s, err %s", group, err)
+		//}
 	}
 	return nil
 }
