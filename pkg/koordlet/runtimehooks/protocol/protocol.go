@@ -72,9 +72,10 @@ var HooksProtocolBuilder = hooksProtocolBuilder{
 }
 
 type Resctrl struct {
-	Schemata string
-	Hook     string
-	Closid   string
+	Schemata   string
+	Hook       string
+	Closid     string
+	NewTaskIds []int32
 }
 
 type Resources struct {

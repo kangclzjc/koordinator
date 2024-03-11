@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/protocol"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
 	koordletutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util"
 	sysutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
@@ -201,6 +202,28 @@ func (R *RDTEngine) GetApp(id string) (App, error) {
 type ResctrlPolicy interface {
 }
 
+func GetPodCgroupNewTaskIdsFromPodCtx(podMeta *protocol.PodContext, tasksMap map[int32]struct{}) []int32 {
+	var taskIds []int32
+
+	klog.Infof("--------------- current podMeat is %v", podMeta.Request)
+	for containerId, v := range podMeta.Request.ContainerTaskIds {
+		containerDir, err := koordletutil.GetContainerCgroupParentDirByID(podMeta.Request.CgroupParent, containerId)
+		if err != nil {
+			klog.Errorf("container %s lost during reconcile", containerDir)
+			continue
+		}
+		klog.Infof("--------------- current ContainerDir is %s", containerDir)
+		ids, err := GetNewTaskIds(v, tasksMap)
+		if err != nil {
+			klog.Warningf("failed to get pod container cgroup task ids for container %s/%s/%s, err: %s",
+				podMeta.Request.PodMeta.Name, containerId)
+			continue
+		}
+		taskIds = append(taskIds, ids...)
+	}
+	return taskIds
+}
+
 func GetPodCgroupNewTaskIds(podMeta *statesinformer.PodMeta, tasksMap map[int32]struct{}) []int32 {
 	var taskIds []int32
 
@@ -270,6 +293,21 @@ func GetContainerCgroupNewTaskIds(containerParentDir string, tasksMap map[int32]
 		return nil, fmt.Errorf("failed to read container task ids, err: %w", err)
 	}
 
+	if tasksMap == nil {
+		return ids, nil
+	}
+
+	// only append the non-mapped ids
+	var taskIDs []int32
+	for _, id := range ids {
+		if _, ok := tasksMap[id]; !ok {
+			taskIDs = append(taskIDs, id)
+		}
+	}
+	return taskIDs, nil
+}
+
+func GetNewTaskIds(ids []int32, tasksMap map[int32]struct{}) ([]int32, error) {
 	if tasksMap == nil {
 		return ids, nil
 	}

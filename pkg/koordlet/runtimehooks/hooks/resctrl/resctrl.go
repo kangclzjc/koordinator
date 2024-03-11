@@ -84,8 +84,10 @@ func (p *plugin) Register(op hooks.Options) {
 	rule.Register(ruleNameForNodeSLO, description,
 		rule.WithParseFunc(statesinformer.RegisterTypeNodeSLOSpec, p.parseRuleForNodeSLO),
 		rule.WithUpdateCallback(p.ruleUpdateCbForNodeSLO))
-	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlSchemata, description+" (pod resctl schema)", p.SetPodResctrlResources, reconciler.NoneFilter())
-	//reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlSchemata, description+" (pod resctl schema)", p.RemoveDeletedPodResctl, reconciler.NoneFilter())
+	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlSchemata, description+" (pod resctrl schema)", p.SetPodResctrlResources, reconciler.NoneFilter())
+	//reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlTasks, description+" (pod resctrl tasks)", p.RemoveDeletedPodResctl, reconciler.NoneFilter())
+	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlTasks, description+" (pod resctrl tasks)", p.UpdatePodTaskIds, reconciler.NoneFilter())
+
 	//reconciler.RegisterCgroupReconciler(reconciler.ContainerTasks, sysutil.Resctrl, description+" (pod resctl taskids)", p.UpdatePodTaskIds, reconciler.PodQOSFilter(), podQOSConditions...)
 
 	if RDT {
@@ -126,7 +128,9 @@ func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
 		return fmt.Errorf("pod protocol is nil for plugin %v", name)
 	}
 
-	resctrlInfo := &protocol.Resctrl{}
+	resctrlInfo := &protocol.Resctrl{
+		NewTaskIds: make([]int32, 0),
+	}
 
 	if v, ok := podCtx.Request.Annotations[apiext.ResctrlAnno]; ok {
 		// TODO:@Bowen just save schemata or more info for policy?
@@ -152,6 +156,45 @@ func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
 	return nil
 }
 
+func (p *plugin) UpdatePodTaskIds(proto protocol.HooksProtocol) error {
+	klog.Infof("=========== UpdatePodTaskIds========")
+
+	podCtx, ok := proto.(*protocol.PodContext)
+	if !ok {
+		return fmt.Errorf("pod protocol is nil for plugin %v", name)
+	}
+
+	if _, ok := podCtx.Request.Annotations[apiext.ResctrlAnno]; ok {
+		curTaskMaps := map[string]map[int32]struct{}{}
+		var err error
+		group := string(podCtx.Request.PodMeta.UID)
+		curTaskMaps[group], err = system.ReadResctrlTasksMap(group)
+		if err != nil {
+			klog.Warningf("failed to read Cat L3 tasks for resctrl group %s, err: %s", group, err)
+		}
+
+		newTaskIds := util.GetPodCgroupNewTaskIdsFromPodCtx(podCtx, curTaskMaps[group])
+		resource, err := resourceexecutor.CalculateResctrlL3TasksResource("koordlet-" + group, newTaskIds)
+		if err != nil {
+			klog.V(4).Infof("failed to get l3 tasks resource for group %s, err: %s", group, err)
+
+		}
+		updated, err := p.executor.Update(false, resource)
+		if err != nil {
+			klog.Warningf("failed to write l3 cat policy on tasks for group %s, updated %v, err: %s", group, updated, err)
+		} else if updated {
+			klog.V(5).Infof("apply l3 cat tasks for group %s finished, updated %v, len(taskIds) %v", group, updated, len(newTaskIds))
+		} else {
+			klog.V(6).Infof("apply l3 cat tasks for group %s finished, updated %v, len(taskIds) %v", group, updated, len(newTaskIds))
+		}
+
+		if err != nil {
+			klog.Warningf("failed to apply l3 cat tasks for group %s, err %s", group, err)
+		}
+	}
+	return nil
+}
+
 func (p *plugin) SetContainerResctrlResources(proto protocol.HooksProtocol) error {
 	containerCtx, ok := proto.(*protocol.ContainerContext)
 	if !ok {
@@ -165,9 +208,10 @@ func (p *plugin) SetContainerResctrlResources(proto protocol.HooksProtocol) erro
 	//}
 	if _, ok := containerCtx.Request.PodAnnotations[apiext.ResctrlAnno]; ok {
 		containerCtx.Response.Resources.Resctrl = &protocol.Resctrl{
-			Schemata: "",
-			Hook:     "",
-			Closid:   "koordlet-" + containerCtx.Request.PodMeta.UID,
+			Schemata:   "",
+			Hook:       "",
+			Closid:     "koordlet-" + containerCtx.Request.PodMeta.UID,
+			NewTaskIds: make([]int32, 0),
 		}
 	}
 	// add parent pid into right ctrl group
@@ -193,9 +237,10 @@ func (p *plugin) abstractResctrlInfo(podId, annotation, qos string) (resource *p
 	if annotation != "" {
 		// TODO: convert annotation into schemataRaw? a final schemata discuss in thursday?
 		resource = &protocol.Resctrl{
-			Schemata: "",
-			Hook:     "", // complex, think about how to group it?
-			Closid:   podId,
+			Schemata:   "",
+			Hook:       "", // complex, think about how to group it?
+			Closid:     podId,
+			NewTaskIds: make([]int32, 0),
 		}
 	}
 
