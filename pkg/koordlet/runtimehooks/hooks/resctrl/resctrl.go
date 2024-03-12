@@ -60,6 +60,7 @@ type plugin struct {
 	rule           *Rule
 	executor       resourceexecutor.ResourceUpdateExecutor
 	statesInformer statesinformer.StatesInformer
+	app            map[string]util.App
 }
 
 var singleton *plugin
@@ -88,7 +89,7 @@ func (p *plugin) Register(op hooks.Options) {
 	//reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlTasks, description+" (pod resctrl tasks)", p.RemoveDeletedPodResctl, reconciler.NoneFilter())
 	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlTasks, description+" (pod resctrl tasks)", p.UpdatePodTaskIds, reconciler.NoneFilter())
 
-	//reconciler.RegisterCgroupReconciler(reconciler.AllPods, system.ResctrlTasks, description+" (pod resctl taskids)", p.UpdatePodTaskIds, reconciler.NoneFilter())
+	reconciler.RegisterCgroupReconciler4AllPods(reconciler.AllPodsLevel, system.ResctrlTasks, description+" (pod resctl taskids)", p.RemoveUnusedResctrlPath, reconciler.PodAnnotationResctrlFilter(), "resctrl")
 
 	if RDT {
 		p.engine = util.NewRDTEngine()
@@ -98,7 +99,7 @@ func (p *plugin) Register(op hooks.Options) {
 	//} else {
 	//    p.engine = ARMEngine{}
 	//}
-	app := p.engine.Rebuild()
+	p.app = p.engine.Rebuild()
 	p.executor = op.Executor
 	p.statesInformer = op.StatesInformer
 	podsMeta := p.statesInformer.GetAllPods()
@@ -111,13 +112,13 @@ func (p *plugin) Register(op hooks.Options) {
 		}
 	}
 
-	for k, v := range app {
-		if _, ok := currentPods[k]; !ok {
-			if err := os.Remove(system.GetResctrlGroupRootDirPath(v.Closid)); err != nil {
-				klog.Errorf("cannot remove ctrl group, err: %w", err)
-			}
-		}
-	}
+	//for k, v := range p.app {
+	//	if _, ok := currentPods[k]; !ok {
+	//		if err := os.Remove(system.GetResctrlGroupRootDirPath(v.Closid)); err != nil {
+	//			klog.Errorf("cannot remove ctrl group, err: %w", err)
+	//		}
+	//	}
+	//}
 }
 
 func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
@@ -153,6 +154,34 @@ func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
 		podCtx.Response.Resources.Resctrl = resctrlInfo
 	}
 
+	return nil
+}
+
+func (p *plugin) RemoveUnusedResctrlPath(protos []protocol.HooksProtocol) error {
+	klog.Infof("=========== RemoveUnusedResctrlPath========")
+
+	currentPods := make(map[string]protocol.HooksProtocol)
+
+	for _, proto := range protos {
+		podCtx, ok := proto.(*protocol.PodContext)
+		if !ok {
+			return fmt.Errorf("pod protocol is nil for plugin %v", name)
+		}
+
+		if _, ok := podCtx.Request.Annotations[apiext.ResctrlAnno]; ok {
+			group := string(podCtx.Request.PodMeta.UID)
+			currentPods[group] = podCtx
+		}
+		klog.Infof("podCtx is %v", podCtx.Request.Annotations)
+	}
+
+	for k, v := range p.app {
+		if _, ok := currentPods[k]; !ok {
+			if err := os.Remove(system.GetResctrlGroupRootDirPath(v.Closid)); err != nil {
+				klog.Errorf("cannot remove ctrl group, err: %w", err)
+			}
+		}
+	}
 	return nil
 }
 
