@@ -23,10 +23,10 @@ import (
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/protocol"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/reconciler"
-	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/rule"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
 	util "github.com/koordinator-sh/koordinator/pkg/koordlet/util/resctrl"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
+	rmconfig "github.com/koordinator-sh/koordinator/pkg/runtimeproxy/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 	"os"
@@ -57,7 +57,6 @@ var (
 // TODO:@Bowen choose parser there or in engine, should we init with some parameters?
 type plugin struct {
 	engine         util.ResctrlEngine
-	rule           *Rule
 	executor       resourceexecutor.ResourceUpdateExecutor
 	statesInformer statesinformer.StatesInformer
 	app            map[string]util.App
@@ -73,23 +72,16 @@ func Object() *plugin {
 }
 
 func newPlugin() *plugin {
-	return &plugin{
-		rule: newRule(),
-	}
+	return &plugin{}
 }
 
 func (p *plugin) Register(op hooks.Options) {
-	//hooks.Register(rmconfig.PreRunPodSandbox, name, description+" (pod)", p.SetPodResctrlResources)
-	//hooks.Register(rmconfig.PreCreateContainer, name, description+" (pod)", p.SetContainerResctrlResources)
-	//hooks.Register(rmconfig.PreRemoveRunPodSandbox, name, description+" (pod)", p.RemovePodResctrlResources)
-	rule.Register(ruleNameForNodeSLO, description,
-		rule.WithParseFunc(statesinformer.RegisterTypeNodeSLOSpec, p.parseRuleForNodeSLO),
-		rule.WithUpdateCallback(p.ruleUpdateCbForNodeSLO))
+	hooks.Register(rmconfig.PreRunPodSandbox, name, description+" (pod)", p.SetPodResctrlResources)
+	hooks.Register(rmconfig.PreCreateContainer, name, description+" (pod)", p.SetContainerResctrlResources)
+	hooks.Register(rmconfig.PreRemoveRunPodSandbox, name, description+" (pod)", p.RemovePodResctrlResources)
 	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlSchemata, description+" (pod resctrl schema)", p.SetPodResctrlResources, reconciler.NoneFilter())
-	//reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlTasks, description+" (pod resctrl tasks)", p.RemoveDeletedPodResctl, reconciler.NoneFilter())
 	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlTasks, description+" (pod resctrl tasks)", p.UpdatePodTaskIds, reconciler.NoneFilter())
-
-	reconciler.RegisterCgroupReconciler4AllPods(reconciler.AllPodsLevel, system.ResctrlTasks, description+" (pod resctl taskids)", p.RemoveUnusedResctrlPath, reconciler.PodAnnotationResctrlFilter(), "resctrl")
+	reconciler.RegisterCgroupReconciler4AllPods(reconciler.AllPodsLevel, system.ResctrlRoot, description+" (pod resctl taskids)", p.RemoveUnusedResctrlPath, reconciler.PodAnnotationResctrlFilter(), "resctrl")
 
 	if RDT {
 		p.engine = util.NewRDTEngine()
@@ -112,13 +104,13 @@ func (p *plugin) Register(op hooks.Options) {
 		}
 	}
 
-	//for k, v := range p.app {
-	//	if _, ok := currentPods[k]; !ok {
-	//		if err := os.Remove(system.GetResctrlGroupRootDirPath(v.Closid)); err != nil {
-	//			klog.Errorf("cannot remove ctrl group, err: %w", err)
-	//		}
-	//	}
-	//}
+	for k, v := range p.app {
+		if _, ok := currentPods[k]; !ok {
+			if err := os.Remove(system.GetResctrlGroupRootDirPath(v.Closid)); err != nil {
+				klog.Errorf("cannot remove ctrl group, err: %w", err)
+			}
+		}
+	}
 }
 
 func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {

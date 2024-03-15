@@ -147,7 +147,6 @@ func (p *podAnnotationResctrlFilter) Name() string {
 }
 
 func (p *podAnnotationResctrlFilter) Filter(podMeta *statesinformer.PodMeta) string {
-	klog.Infof("======kkkk=======podAnnotationResctrlFilter filter ")
 	if _, ok := podMeta.Pod.Annotations[apiext.ResctrlAnno]; ok {
 		return podAnnotationResctrlFilterName
 	}
@@ -497,10 +496,8 @@ func (c *reconciler) reconcilePodCgroup(stopCh <-chan struct{}) {
 				//	// TODO@kang: reconcile new taskIDs
 				//}
 			}
-			klog.Infof("========kkkk======== allpodslevel 0, %v", globalCgroupReconcilers.allPodsLevel)
 
 			for _, r := range globalCgroupReconcilers.allPodsLevel {
-				klog.Infof("========kkkk======== allpodslevel 1, %v", r.description)
 				currentPods := make([]protocol.HooksProtocol, 0)
 				for _, podMeta := range podsMeta {
 					if _, ok := r.fn4AllPods[r.filter.Filter(podMeta)]; ok {
@@ -509,11 +506,7 @@ func (c *reconciler) reconcilePodCgroup(stopCh <-chan struct{}) {
 					}
 				}
 
-				klog.Infof("========kkkk======== allpodslevel 2, %v", currentPods)
-
 				reconcileFn, ok := r.fn4AllPods[r.filter.Name()]
-				klog.Infof("========kkkk======== allpodslevel 3, %v", ok)
-
 				if !ok {
 					klog.Infof("calling reconcile function %v aborted, condition %s not registered",
 						r.description, r.filter.Name())

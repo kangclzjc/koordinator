@@ -228,7 +228,6 @@ func (s *podsInformer) syncPods() error {
 		// record pod's containers taskids
 		s.getTaskIds(podMeta)
 		// record pod container metrics
-		klog.Infof("-------kkk----- first get pod id is %s, %v", podMeta.Pod.Name, podMeta.ContainerTaskIds)
 		for _, v := range podMeta.ContainerTaskIds {
 			klog.Infof("-------kkk----- get taskids is %v", v)
 		}

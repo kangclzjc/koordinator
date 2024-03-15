@@ -114,6 +114,7 @@ func IsSupportResctrl() (bool, error) {
 }
 
 var (
+	ResctrlRoot      = NewCommonResctrlResource("", "")
 	ResctrlSchemata  = NewCommonResctrlResource(ResctrlSchemataName, "")
 	ResctrlTasks     = NewCommonResctrlResource(ResctrlTasksName, "")
 	ResctrlL3CbmMask = NewCommonResctrlResource(ResctrlCbmMaskName, filepath.Join(RdtInfoDir, L3CatDir))
