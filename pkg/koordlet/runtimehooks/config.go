@@ -76,7 +76,10 @@ const (
 	// alpha: v1.4
 	CoreSched featuregate.Feature = "CoreSched"
 
-	//TODO@kang: add comment
+	// Resctrl adjusts LLC/MB value for pod.
+	//
+	// owner: @kangclzjc @saintube @zwzhang0107
+	// alpha: v1.5
 	Resctrl featuregate.Feature = "Resctrl"
 )
 
@@ -88,7 +91,7 @@ var (
 		BatchResource:    {Default: true, PreRelease: featuregate.Beta},
 		CPUNormalization: {Default: false, PreRelease: featuregate.Alpha},
 		CoreSched:        {Default: false, PreRelease: featuregate.Alpha},
-		Resctrl:          {Default: true, PreRelease: featuregate.Beta},
+		Resctrl:          {Default: true, PreRelease: featuregate.Alpha},
 	}
 
 	runtimeHookPlugins = map[featuregate.Feature]HookPlugin{

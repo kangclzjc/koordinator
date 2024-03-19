@@ -18,12 +18,12 @@ package hooks
 
 import (
 	"fmt"
-	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
 
 	"k8s.io/klog/v2"
 
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/protocol"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
 	rmconfig "github.com/koordinator-sh/koordinator/pkg/runtimeproxy/config"
 )
 

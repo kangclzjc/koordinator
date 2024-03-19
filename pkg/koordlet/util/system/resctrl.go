@@ -53,7 +53,8 @@ const (
 	MbSchemataPrefix = "MB"
 
 	// other cpu vendor like "GenuineIntel"
-	AMD_VENDOR_ID = "AuthenticAMD"
+	AMD_VENDOR_ID   = "AuthenticAMD"
+	INTEL_VENDOR_ID = "GenuineIntel"
 )
 
 var (

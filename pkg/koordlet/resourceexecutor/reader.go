@@ -19,8 +19,6 @@ package resourceexecutor
 import (
 	"errors"
 	"fmt"
-	"k8s.io/klog/v2"
-
 	sysutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
 	"github.com/koordinator-sh/koordinator/pkg/util/cpuset"
 )
@@ -183,7 +181,6 @@ func (r *CgroupV1Reader) ReadMemoryColdPageUsage(parentDir string) (uint64, erro
 }
 
 func (r *CgroupV1Reader) ReadCPUTasks(parentDir string) ([]int32, error) {
-	klog.Infof("-------------read cpu tasks from v1")
 	resource, ok := sysutil.DefaultRegistry.Get(sysutil.CgroupVersionV1, sysutil.CPUTasksName)
 	if !ok {
 		return nil, ErrResourceNotRegistered
@@ -390,9 +387,7 @@ func (r *CgroupV2Reader) ReadMemoryColdPageUsage(parentDir string) (uint64, erro
 }
 
 func (r *CgroupV2Reader) ReadCPUTasks(parentDir string) ([]int32, error) {
-	klog.Info("read cpu tasks from v2")
 	resource, ok := sysutil.DefaultRegistry.Get(sysutil.CgroupVersionV2, sysutil.CPUTasksName)
-	klog.Infof("------------- resource is %s, resource path is %s", resource.ResourceType(), resource.Path(parentDir))
 	if !ok {
 		return nil, ErrResourceNotRegistered
 	}
@@ -442,9 +437,7 @@ func (r *CgroupV2Reader) ReadPSI(parentDir string) (*PSIByResource, error) {
 
 func NewCgroupReader() CgroupReader {
 	if sysutil.GetCurrentCgroupVersion() == sysutil.CgroupVersionV2 {
-		klog.Info("-----------use cgroup v2")
 		return &CgroupV2Reader{}
 	}
-	klog.Info("-----------use cgroup v1")
 	return &CgroupV1Reader{}
 }

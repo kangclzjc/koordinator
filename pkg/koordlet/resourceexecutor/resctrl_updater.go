@@ -54,8 +54,7 @@ func (r *ResctrlSchemataResourceUpdater) Clone() ResourceUpdater {
 func NewResctrlSchemataResource(group, schemata string) (ResourceUpdater, error) {
 	err := sysutil.InitCatGroupIfNotExist(group)
 	if err != nil {
-		// TODO:@Bowen how to handle create error?
-		klog.Errorf("error is %v", err)
+		klog.Errorf("Init Cat Group failed, error is %v", err)
 	}
 	schemataFile := sysutil.ResctrlSchemata.Path(group)
 	schemataKey := sysutil.ResctrlSchemataName + ":" + schemataFile
@@ -81,7 +80,7 @@ func NewResctrlSchemataResource(group, schemata string) (ResourceUpdater, error)
 		}
 	}
 	schemataStr := strings.Join(items, "")
-	klog.Infof("generate new resctrl schemata resource, file %s, key %s, value %s, schemata %s",
+	klog.V(6).Infof("generate new resctrl schemata resource, file %s, key %s, value %s, schemata %s",
 		schemataFile, schemataKey, schemataStr, schemata)
 	return &ResctrlSchemataResourceUpdater{
 		DefaultResourceUpdater: DefaultResourceUpdater{

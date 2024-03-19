@@ -18,6 +18,11 @@ package resctrl
 
 import (
 	"fmt"
+	corev1 "k8s.io/api/core/v1"
+	"os"
+
+	"k8s.io/klog/v2"
+
 	apiext "github.com/koordinator-sh/koordinator/apis/extension"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks"
@@ -26,32 +31,14 @@ import (
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
 	util "github.com/koordinator-sh/koordinator/pkg/koordlet/util/resctrl"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
+	sysutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
 	rmconfig "github.com/koordinator-sh/koordinator/pkg/runtimeproxy/config"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/klog/v2"
-	"os"
 )
 
 const (
-	// LSRResctrlGroup is the name of LSR resctrl group
-	LSRResctrlGroup = "LSR"
-	// LSResctrlGroup is the name of LS resctrl group
-	LSResctrlGroup = "LS"
-	// BEResctrlGroup is the name of BE resctrl group
-	BEResctrlGroup = "BE"
-	// UnknownResctrlGroup is the resctrl group which is unknown to reconcile
-	UnknownResctrlGroup = "Unknown"
-	name                = "Resctrl"
-	description         = "set resctrl for class/pod"
-
-	ruleNameForNodeSLO  = name + " (nodeSLO)"
-	ruleNameForNodeMeta = name + " (nodeMeta)"
-	RDT                 = true
-)
-
-var (
-	// resctrlGroupList is the list of resctrl groups to be reconcile
-	resctrlGroupList = []string{LSRResctrlGroup, LSResctrlGroup, BEResctrlGroup}
+	name        = "Resctrl"
+	description = "set resctrl for class/pod"
+	RDT         = true
 )
 
 // TODO:@Bowen choose parser there or in engine, should we init with some parameters?
@@ -75,25 +62,7 @@ func newPlugin() *plugin {
 	return &plugin{}
 }
 
-func (p *plugin) Register(op hooks.Options) {
-	hooks.Register(rmconfig.PreRunPodSandbox, name, description+" (pod)", p.SetPodResctrlResources)
-	hooks.Register(rmconfig.PreCreateContainer, name, description+" (pod)", p.SetContainerResctrlResources)
-	hooks.Register(rmconfig.PreRemoveRunPodSandbox, name, description+" (pod)", p.RemovePodResctrlResources)
-	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlSchemata, description+" (pod resctrl schema)", p.SetPodResctrlResources, reconciler.NoneFilter())
-	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlTasks, description+" (pod resctrl tasks)", p.UpdatePodTaskIds, reconciler.NoneFilter())
-	reconciler.RegisterCgroupReconciler4AllPods(reconciler.AllPodsLevel, system.ResctrlRoot, description+" (pod resctl taskids)", p.RemoveUnusedResctrlPath, reconciler.PodAnnotationResctrlFilter(), "resctrl")
-
-	if RDT {
-		p.engine = util.NewRDTEngine()
-	}
-	//else if AMD {
-	//    p.engine = AMDEngine{}
-	//} else {
-	//    p.engine = ARMEngine{}
-	//}
-	p.app = p.engine.Rebuild()
-	p.executor = op.Executor
-	p.statesInformer = op.StatesInformer
+func (p *plugin) init() {
 	podsMeta := p.statesInformer.GetAllPods()
 	currentPods := make(map[string]*corev1.Pod)
 	for _, podMeta := range podsMeta {
@@ -111,6 +80,27 @@ func (p *plugin) Register(op hooks.Options) {
 			}
 		}
 	}
+}
+
+func (p *plugin) Register(op hooks.Options) {
+	if vendorID, err := sysutil.GetVendorIDByCPUInfo(sysutil.GetCPUInfoPath()); err == nil && vendorID == sysutil.INTEL_VENDOR_ID {
+		p.engine = util.NewRDTEngine()
+	} else {
+		//TODO: add AMD resctrl engine
+		return
+	}
+
+	hooks.Register(rmconfig.PreRunPodSandbox, name, description+" (pod)", p.SetPodResctrlResources)
+	hooks.Register(rmconfig.PreCreateContainer, name, description+" (pod)", p.SetContainerResctrlResources)
+	hooks.Register(rmconfig.PreRemoveRunPodSandbox, name, description+" (pod)", p.RemovePodResctrlResources)
+	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlSchemata, description+" (pod resctrl schema)", p.SetPodResctrlResources, reconciler.NoneFilter())
+	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlTasks, description+" (pod resctrl tasks)", p.UpdatePodTaskIds, reconciler.NoneFilter())
+	reconciler.RegisterCgroupReconciler4AllPods(reconciler.AllPodsLevel, system.ResctrlRoot, description+" (pod resctl taskids)", p.RemoveUnusedResctrlPath, reconciler.PodAnnotationResctrlFilter(), "resctrl")
+
+	p.app = p.engine.Rebuild()
+	p.executor = op.Executor
+	p.statesInformer = op.StatesInformer
+	p.init()
 }
 
 func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
