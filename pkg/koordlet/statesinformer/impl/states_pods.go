@@ -17,7 +17,6 @@ limitations under the License.
 package impl
 
 import (
-	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
 	"sync"
 	"time"
 
@@ -32,6 +31,7 @@ import (
 	apiext "github.com/koordinator-sh/koordinator/apis/extension"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/metrics"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/pleg"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
 	koordletutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
@@ -179,7 +179,6 @@ func (s *podsInformer) getTaskIds(podMeta *statesinformer.PodMeta) {
 			continue
 		}
 		podMeta.ContainerTaskIds[containerStat.ContainerID] = ids
-		klog.Infof("--------kkk--------- container is %s, ids is %v", containerDir, ids)
 	}
 
 	sandboxID, err := koordletutil.GetPodSandboxContainerID(pod)
@@ -228,9 +227,6 @@ func (s *podsInformer) syncPods() error {
 		// record pod's containers taskids
 		s.getTaskIds(podMeta)
 		// record pod container metrics
-		for _, v := range podMeta.ContainerTaskIds {
-			klog.Infof("-------kkk----- get taskids is %v", v)
-		}
 		recordPodResourceMetrics(podMeta)
 	}
 	s.podRWMutex.Lock()

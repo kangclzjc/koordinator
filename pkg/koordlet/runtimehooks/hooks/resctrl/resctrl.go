@@ -93,6 +93,7 @@ func (p *plugin) Register(op hooks.Options) {
 	hooks.Register(rmconfig.PreCreateContainer, name, description+" (pod)", p.SetContainerResctrlResources)
 	hooks.Register(rmconfig.PreRemoveRunPodSandbox, name, description+" (pod)", p.RemovePodResctrlResources)
 	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlSchemata, description+" (pod resctrl schema)", p.SetPodResctrlResources, reconciler.NoneFilter())
+	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlSchemata, description+" (pod resctrl schema)", p.RemovePodResctrlResources, reconciler.NoneFilter())
 	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlTasks, description+" (pod resctrl tasks)", p.UpdatePodTaskIds, reconciler.NoneFilter())
 	reconciler.RegisterCgroupReconciler4AllPods(reconciler.AllPodsLevel, system.ResctrlRoot, description+" (pod resctl taskids)", p.RemoveUnusedResctrlPath, reconciler.PodAnnotationResctrlFilter(), "resctrl")
 
@@ -109,12 +110,14 @@ func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
 		return fmt.Errorf("pod protocol is nil for plugin %v", name)
 	}
 
-	resctrlInfo := &protocol.Resctrl{
-		NewTaskIds: make([]int32, 0),
-	}
-
 	if v, ok := podCtx.Request.Annotations[apiext.ResctrlAnno]; ok {
-		p.engine.RegisterApp(podCtx.Request.PodMeta.UID, v)
+		resctrlInfo := &protocol.Resctrl{
+			NewTaskIds: make([]int32, 0),
+		}
+		err := p.engine.RegisterApp(podCtx.Request.PodMeta.UID, v)
+		if err != nil {
+			return err
+		}
 
 		app, err := p.engine.GetApp(podCtx.Request.PodMeta.UID)
 		if err != nil {
@@ -203,10 +206,16 @@ func (p *plugin) RemovePodResctrlResources(proto protocol.HooksProtocol) error {
 		return fmt.Errorf("pod protocol is nil for plugin %v", name)
 	}
 
-	if podCtx.Request.Annotations[apiext.ResctrlAnno] != "" {
-		if err := os.Remove(system.GetResctrlGroupRootDirPath(util.ClosdIdPrefix + podCtx.Request.PodMeta.UID)); err != nil {
-			return fmt.Errorf("cannot remove ctrl group, err: %w", err)
+	if _, ok := podCtx.Request.Annotations[apiext.ResctrlAnno]; ok {
+		resctrlInfo := &protocol.Resctrl{
+			NewTaskIds: make([]int32, 0),
 		}
+		app, err := p.engine.GetApp(podCtx.Request.PodMeta.UID)
+		if err != nil {
+			return err
+		}
+		resctrlInfo.Closid = app.Closid
+		podCtx.Response.Resources.Resctrl = resctrlInfo
 	}
 	return nil
 }

@@ -18,6 +18,7 @@ package statesinformer
 
 import (
 	"fmt"
+
 	topov1alpha1 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/apis/topology/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 

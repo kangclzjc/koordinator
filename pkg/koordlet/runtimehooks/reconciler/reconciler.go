@@ -17,7 +17,6 @@ limitations under the License.
 package reconciler
 
 import (
-	//"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks/resctrl"
 	"sync"
 	"time"
 
@@ -401,8 +400,6 @@ func (c *reconciler) reconcilePodCgroup(stopCh <-chan struct{}) {
 		select {
 		case <-c.podUpdated:
 			podsMeta := c.getPodsMeta()
-			//curTaskMaps := map[string]map[int32]struct{}{}
-			//var err error
 			currentPods := make(map[string]*corev1.Pod)
 			for _, podMeta := range podsMeta {
 				pod := podMeta.Pod
@@ -468,33 +465,6 @@ func (c *reconciler) reconcilePodCgroup(stopCh <-chan struct{}) {
 						}
 					}
 				}
-				//if _, ok := podMeta.Pod.Annotations[resctrl.ResctrlAnno]; ok {
-				//	group := string(podMeta.Pod.UID)
-				//	curTaskMaps[group], err = system.ReadResctrlTasksMap(group)
-				//	if err != nil {
-				//		klog.Warningf("failed to read Cat L3 tasks for resctrl group %s, err: %s", group, err)
-				//	}
-				//	newTaskIds := resutil.GetPodCgroupNewTaskIds(podMeta, curTaskMaps[group])
-				//	resource, err := resourceexecutor.CalculateResctrlL3TasksResource(group, newTaskIds)
-				//	if err != nil {
-				//		klog.V(4).Infof("failed to get l3 tasks resource for group %s, err: %s", group, err)
-				//		continue
-				//	}
-				//	updated, err := c.executor.Update(false, resource)
-				//	if err != nil {
-				//		klog.Warningf("failed to write l3 cat policy on tasks for group %s, updated %v, err: %s", group, updated, err)
-				//		continue
-				//	} else if updated {
-				//		klog.V(5).Infof("apply l3 cat tasks for group %s finished, updated %v, len(taskIds) %v", group, updated, len(newTaskIds))
-				//	} else {
-				//		klog.V(6).Infof("apply l3 cat tasks for group %s finished, updated %v, len(taskIds) %v", group, updated, len(newTaskIds))
-				//	}
-				//
-				//	if err != nil {
-				//		klog.Warningf("failed to apply l3 cat tasks for group %s, err %s", group, err)
-				//	}
-				//	// TODO@kang: reconcile new taskIDs
-				//}
 			}
 
 			for _, r := range globalCgroupReconcilers.allPodsLevel {

@@ -18,6 +18,8 @@ package protocol
 
 import (
 	"fmt"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
+	"os"
 
 	"github.com/containerd/nri/pkg/api"
 
@@ -288,26 +290,24 @@ func (p *PodContext) injectForExt() {
 		}
 	}
 	if p.Response.Resources.Resctrl != nil {
-		klog.Infof("-------kkk------%s %s", p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.Schemata)
 		eventHelper := audit.V(3).Pod(p.Request.PodMeta.Namespace, p.Request.PodMeta.Name).Reason("runtime-hooks").Message(
 			"set pod LLC/MB limit to %v", *p.Response.Resources.Resctrl)
-		if p.Response.Resources.Resctrl.Closid != "" && p.Response.Resources.Resctrl.Schemata != "" {
+		if p.Response.Resources.Resctrl.Closid != "" || p.Response.Resources.Resctrl.Schemata != "" {
 			updater, err := injectResctrl(p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.Schemata, eventHelper, p.executor)
 			if err != nil {
 				klog.Infof("set pod %v/%v LLC/MB limit %v on cgroup parent %v failed, error %v", p.Request.PodMeta.Namespace,
 					p.Request.PodMeta.Name, p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.Schemata, err)
 			} else {
 				p.updaters = append(p.updaters, updater)
-				klog.V(5).Infof("set pod %v/%v memory limit %v on cgroup parent %v",
+				klog.V(5).Infof("set pod %v/%v LLC/MB limit %v on cgroup parent %v",
 					p.Request.PodMeta.Namespace, p.Request.PodMeta.Name, *p.Response.Resources.Resctrl, p.Request.CgroupParent)
 			}
 		}
 
 		if len(p.Response.Resources.Resctrl.NewTaskIds) > 0 {
-			klog.Infof("============pod Context====== %v", p.Response.Resources.Resctrl.NewTaskIds)
 			updater, err := resourceexecutor.CalculateResctrlL3TasksResource(p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.NewTaskIds)
 			if err != nil {
-				klog.V(4).Infof("failed to get l3 tasks resource for group %s, err: %s", p.Response.Resources.Resctrl.Closid, err)
+				klog.V(5).Infof("failed to get l3 tasks resource for group %s, err: %s", p.Response.Resources.Resctrl.Closid, err)
 			} else {
 				p.updaters = append(p.updaters, updater)
 			}
@@ -316,7 +316,13 @@ func (p *PodContext) injectForExt() {
 }
 
 func (p *PodContext) removeForExt() {
-	if p.Response.Resources.Resctrl != nil {
-		klog.Infof("-------kkk------%s %s", p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.Schemata)
+	if p.Response.Resources.Resctrl != nil && p.Response.Resources.Resctrl.Closid != "" {
+		if err := os.Remove(system.GetResctrlGroupRootDirPath(p.Response.Resources.Resctrl.Closid)); err != nil {
+			klog.Infof("cannot remove ctrl group, err: %w", err)
+		} else {
+			klog.V(5).Infof("set pod %v/%v memory limit %v on cgroup parent %v",
+				p.Request.PodMeta.Namespace, p.Request.PodMeta.Name, *p.Response.Resources.Resctrl, p.Request.CgroupParent)
+
+		}
 	}
 }

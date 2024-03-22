@@ -141,13 +141,7 @@ func (R *RDTEngine) RegisterApp(podid, annotation string) error {
 	err := json.Unmarshal([]byte(annotation), &res)
 	if err != nil {
 		klog.Errorf("error is %v", err)
-		return nil
-	}
-
-	// Print the parsed data
-	klog.Infof("resctrl: %v", res)
-	if res.MB.Schemata.Percent != 0 && res.MB.Schemata.Range != nil {
-		klog.Infof("resctrl MB is : %v", res.MB)
+		return err
 	}
 
 	schemata := ParseSchemata(res)
