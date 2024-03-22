@@ -14,6 +14,8 @@ import (
 	"sync"
 )
 
+const ClosdIdPrefix = "koordlet-"
+
 type Resctrl struct {
 	L3 map[int]string
 	MB map[int]string
@@ -103,7 +105,7 @@ func (R *RDTEngine) Rebuild() {
 	}
 
 	for _, file := range files {
-		if file.IsDir() && strings.HasPrefix(file.Name(), "koordlet") {
+		if file.IsDir() && strings.HasPrefix(file.Name(), ClosdIdPrefix) {
 			path := filepath.Join(root, file.Name(), "schemata")
 			if _, err := os.Stat(path); err == nil {
 				content, err := ioutil.ReadFile(path)
@@ -118,7 +120,7 @@ func (R *RDTEngine) Rebuild() {
 				if err != nil {
 					klog.Errorf("failed to parse %v", err)
 				}
-				podid := strings.TrimPrefix(file.Name(), "koordlet-")
+				podid := strings.TrimPrefix(file.Name(), ClosdIdPrefix)
 				R.l.Lock()
 				defer R.l.Unlock()
 				R.Apps[podid] = App{
@@ -139,7 +141,6 @@ func (R *RDTEngine) RegisterApp(podid, annotation string) error {
 	err := json.Unmarshal([]byte(annotation), &res)
 	if err != nil {
 		klog.Errorf("error is %v", err)
-		//panic(err)
 		return nil
 	}
 
@@ -152,7 +153,7 @@ func (R *RDTEngine) RegisterApp(podid, annotation string) error {
 	schemata := ParseSchemata(res)
 	app := App{
 		Resctrl: schemata,
-		Closid:  "koordlet-" + podid,
+		Closid:  ClosdIdPrefix + podid,
 	}
 	R.l.Lock()
 	defer R.l.Unlock()
