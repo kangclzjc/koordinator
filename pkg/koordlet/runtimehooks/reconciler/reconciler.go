@@ -17,6 +17,7 @@ limitations under the License.
 package reconciler
 
 import (
+	//"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks/resctrl"
 	"sync"
 	"time"
 
@@ -38,22 +39,24 @@ const (
 	PodLevel       ReconcilerLevel = "pod"
 	ContainerLevel ReconcilerLevel = "container"
 	SandboxLevel   ReconcilerLevel = "sandbox"
+	AllPodsLevel   ReconcilerLevel = "allpods"
 )
 
 var globalCgroupReconcilers = struct {
 	all []*cgroupReconciler
 
-	kubeQOSLevel   map[string]*cgroupReconciler
-	podLevel       map[string]*cgroupReconciler
-	containerLevel map[string]*cgroupReconciler
-
+	kubeQOSLevel          map[string]*cgroupReconciler
+	podLevel              map[string]*cgroupReconciler
+	containerLevel        map[string]*cgroupReconciler
 	sandboxContainerLevel map[string]*cgroupReconciler
+	allPodsLevel          map[string]*cgroupReconciler
 }{
 	kubeQOSLevel:   map[string]*cgroupReconciler{},
 	podLevel:       map[string]*cgroupReconciler{},
 	containerLevel: map[string]*cgroupReconciler{},
 
 	sandboxContainerLevel: map[string]*cgroupReconciler{},
+	allPodsLevel:          map[string]*cgroupReconciler{},
 }
 
 type cgroupReconciler struct {
@@ -62,6 +65,7 @@ type cgroupReconciler struct {
 	level       ReconcilerLevel
 	filter      Filter
 	fn          map[string]reconcileFunc
+	fn4AllPods  map[string]reconcileFunc4AllPods
 }
 
 // Filter & Conditions:
@@ -132,7 +136,90 @@ func PodQOSFilter() *podQOSFilter {
 	return singletonPodQOSFilter
 }
 
+type podAnnotationResctrlFilter struct{}
+
+const (
+	podAnnotationResctrlFilterName = "resctrl"
+)
+
+func (p *podAnnotationResctrlFilter) Name() string {
+	return podAnnotationResctrlFilterName
+}
+
+func (p *podAnnotationResctrlFilter) Filter(podMeta *statesinformer.PodMeta) string {
+	if _, ok := podMeta.Pod.Annotations[apiext.ResctrlAnno]; ok {
+		return podAnnotationResctrlFilterName
+	}
+
+	return ""
+}
+
+var singletonPodAnnotationResctrlFilter *podAnnotationResctrlFilter
+
+// PodQOSFilter returns a Filter which filters pod qos class
+func PodAnnotationResctrlFilter() *podAnnotationResctrlFilter {
+	if singletonPodQOSFilter == nil {
+		singletonPodQOSFilter = &podQOSFilter{}
+	}
+	return singletonPodAnnotationResctrlFilter
+}
+
 type reconcileFunc func(protocol.HooksProtocol) error
+type reconcileFunc4AllPods func([]protocol.HooksProtocol) error
+
+func RegisterCgroupReconciler4AllPods(level ReconcilerLevel, cgroupFile system.Resource, description string,
+	fn reconcileFunc4AllPods, filter Filter, conditions ...string) {
+	if len(conditions) <= 0 { // default condition
+		conditions = []string{NoneFilterCondition}
+	}
+
+	for _, r := range globalCgroupReconcilers.all {
+		if level != r.level || cgroupFile.ResourceType() != r.cgroupFile.ResourceType() {
+			continue
+		}
+
+		// if reconciler exist
+		if r.filter.Name() != filter.Name() {
+			klog.Fatalf("%v of level %v is already registered with filter %v by %v, cannot change to %v by %v",
+				cgroupFile.ResourceType(), level, r.filter.Name(), r.description, filter.Name(), description)
+		}
+
+		for _, condition := range conditions {
+			if _, ok := r.fn[condition]; ok {
+				klog.Fatalf("%v of level %v is already registered with condition %v by %v, cannot change by %v",
+					cgroupFile.ResourceType(), level, condition, r.description, description)
+			}
+
+			r.fn4AllPods[condition] = fn
+		}
+		klog.V(1).Infof("register reconcile function %v finished, info: level=%v, resourceType=%v, add conditions=%v",
+			description, level, cgroupFile.ResourceType(), conditions)
+		return
+	}
+
+	// if reconciler not exist
+	r := &cgroupReconciler{
+		cgroupFile:  cgroupFile,
+		description: description,
+		level:       level,
+		fn:          map[string]reconcileFunc{},
+		fn4AllPods:  map[string]reconcileFunc4AllPods{},
+	}
+
+	globalCgroupReconcilers.all = append(globalCgroupReconcilers.all, r)
+	switch level {
+	case AllPodsLevel:
+		r.filter = filter
+		for _, condition := range conditions {
+			r.fn4AllPods[condition] = fn
+		}
+		globalCgroupReconcilers.allPodsLevel[string(r.cgroupFile.ResourceType())] = r
+	default:
+		klog.Fatalf("cgroup level %v is not supported", level)
+	}
+	klog.V(1).Infof("register reconcile function %v finished, info: level=%v, resourceType=%v, filter=%v, conditions=%v",
+		description, level, cgroupFile.ResourceType(), filter.Name(), conditions)
+}
 
 // RegisterCgroupReconciler registers a cgroup reconciler according to the cgroup file, reconcile function and filter
 // conditions. A cgroup file of one level can have multiple reconcile functions with different filtered conditions.
@@ -177,6 +264,7 @@ func RegisterCgroupReconciler(level ReconcilerLevel, cgroupFile system.Resource,
 		description: description,
 		level:       level,
 		fn:          map[string]reconcileFunc{},
+		fn4AllPods:  map[string]reconcileFunc4AllPods{},
 	}
 
 	globalCgroupReconcilers.all = append(globalCgroupReconcilers.all, r)
@@ -313,7 +401,15 @@ func (c *reconciler) reconcilePodCgroup(stopCh <-chan struct{}) {
 		select {
 		case <-c.podUpdated:
 			podsMeta := c.getPodsMeta()
+			//curTaskMaps := map[string]map[int32]struct{}{}
+			//var err error
+			currentPods := make(map[string]*corev1.Pod)
 			for _, podMeta := range podsMeta {
+				pod := podMeta.Pod
+				if _, ok := podMeta.Pod.Annotations[apiext.ResctrlAnno]; ok {
+					group := string(podMeta.Pod.UID)
+					currentPods[group] = pod
+				}
 				for _, r := range globalCgroupReconcilers.podLevel {
 					reconcileFn, ok := r.fn[r.filter.Filter(podMeta)]
 					if !ok {
@@ -323,6 +419,7 @@ func (c *reconciler) reconcilePodCgroup(stopCh <-chan struct{}) {
 					}
 
 					podCtx := protocol.HooksProtocolBuilder.Pod(podMeta)
+
 					if err := reconcileFn(podCtx); err != nil {
 						klog.Warningf("calling reconcile function %v for pod %v failed, error %v",
 							r.description, podMeta.Key(), err)
@@ -370,6 +467,55 @@ func (c *reconciler) reconcilePodCgroup(stopCh <-chan struct{}) {
 								r.description, podMeta.Key(), containerStat.Name)
 						}
 					}
+				}
+				//if _, ok := podMeta.Pod.Annotations[resctrl.ResctrlAnno]; ok {
+				//	group := string(podMeta.Pod.UID)
+				//	curTaskMaps[group], err = system.ReadResctrlTasksMap(group)
+				//	if err != nil {
+				//		klog.Warningf("failed to read Cat L3 tasks for resctrl group %s, err: %s", group, err)
+				//	}
+				//	newTaskIds := resutil.GetPodCgroupNewTaskIds(podMeta, curTaskMaps[group])
+				//	resource, err := resourceexecutor.CalculateResctrlL3TasksResource(group, newTaskIds)
+				//	if err != nil {
+				//		klog.V(4).Infof("failed to get l3 tasks resource for group %s, err: %s", group, err)
+				//		continue
+				//	}
+				//	updated, err := c.executor.Update(false, resource)
+				//	if err != nil {
+				//		klog.Warningf("failed to write l3 cat policy on tasks for group %s, updated %v, err: %s", group, updated, err)
+				//		continue
+				//	} else if updated {
+				//		klog.V(5).Infof("apply l3 cat tasks for group %s finished, updated %v, len(taskIds) %v", group, updated, len(newTaskIds))
+				//	} else {
+				//		klog.V(6).Infof("apply l3 cat tasks for group %s finished, updated %v, len(taskIds) %v", group, updated, len(newTaskIds))
+				//	}
+				//
+				//	if err != nil {
+				//		klog.Warningf("failed to apply l3 cat tasks for group %s, err %s", group, err)
+				//	}
+				//	// TODO@kang: reconcile new taskIDs
+				//}
+			}
+
+			for _, r := range globalCgroupReconcilers.allPodsLevel {
+				currentPods := make([]protocol.HooksProtocol, 0)
+				for _, podMeta := range podsMeta {
+					if _, ok := r.fn4AllPods[r.filter.Filter(podMeta)]; ok {
+						podCtx := protocol.HooksProtocolBuilder.Pod(podMeta)
+						currentPods = append(currentPods, podCtx)
+					}
+				}
+
+				reconcileFn, ok := r.fn4AllPods[r.filter.Name()]
+				if !ok {
+					klog.Infof("calling reconcile function %v aborted, condition %s not registered",
+						r.description, r.filter.Name())
+					continue
+				}
+
+				if err := reconcileFn(currentPods); err != nil {
+					klog.Warningf("calling reconcile function %v for pod %v failed, error %v",
+						r.description, err)
 				}
 			}
 		case <-stopCh:

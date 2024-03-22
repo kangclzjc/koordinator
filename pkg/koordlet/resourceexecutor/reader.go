@@ -19,7 +19,6 @@ package resourceexecutor
 import (
 	"errors"
 	"fmt"
-
 	sysutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
 	"github.com/koordinator-sh/koordinator/pkg/util/cpuset"
 )

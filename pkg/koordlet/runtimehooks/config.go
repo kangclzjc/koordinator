@@ -18,6 +18,7 @@ package runtimehooks
 
 import (
 	"flag"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks/resctrl"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -80,6 +81,12 @@ const (
 	// owner: @l1b0k
 	// alpha: v1.5
 	TerwayQoS featuregate.Feature = "TerwayQoS"
+
+	// Resctrl adjusts LLC/MB value for pod.
+	//
+	// owner: @kangclzjc @saintube @zwzhang0107
+	// alpha: v1.5
+	Resctrl featuregate.Feature = "Resctrl"
 )
 
 var (
@@ -91,6 +98,7 @@ var (
 		CPUNormalization: {Default: false, PreRelease: featuregate.Alpha},
 		CoreSched:        {Default: false, PreRelease: featuregate.Alpha},
 		TerwayQoS:        {Default: false, PreRelease: featuregate.Alpha},
+		Resctrl:          {Default: true, PreRelease: featuregate.Alpha},
 	}
 
 	runtimeHookPlugins = map[featuregate.Feature]HookPlugin{
@@ -101,6 +109,7 @@ var (
 		CPUNormalization: cpunormalization.Object(),
 		CoreSched:        coresched.Object(),
 		TerwayQoS:        terwayqos.Object(),
+		Resctrl:          resctrl.Object(),
 	}
 )
 

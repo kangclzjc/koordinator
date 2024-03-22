@@ -67,6 +67,7 @@ type PodRequest struct {
 	CgroupParent      string
 	Resources         *Resources // TODO: support proxy & nri mode
 	ExtendedResources *apiext.ExtendedResourceSpec
+	ContainerTaskIds  map[string][]int32
 }
 
 func (p *PodRequest) FromNri(pod *api.PodSandbox) {
@@ -106,6 +107,7 @@ func (p *PodRequest) FromReconciler(podMeta *statesinformer.PodMeta) {
 	p.Labels = podMeta.Pod.Labels
 	p.Annotations = podMeta.Pod.Annotations
 	p.CgroupParent = podMeta.CgroupDir
+	p.ContainerTaskIds = podMeta.ContainerTaskIds
 	p.Resources = &Resources{}
 	p.Resources.FromPod(podMeta.Pod)
 	// retrieve ExtendedResources from pod spec and pod annotations (prefer pod spec)
@@ -174,6 +176,14 @@ func (p *PodContext) NriDone(executor resourceexecutor.ResourceUpdateExecutor) {
 		p.executor = executor
 	}
 	p.injectForExt()
+	p.Update()
+}
+
+func (p *PodContext) NriRemoveDone(executor resourceexecutor.ResourceUpdateExecutor) {
+	if p.executor == nil {
+		p.executor = executor
+	}
+	p.removeForExt()
 	p.Update()
 }
 
@@ -276,5 +286,37 @@ func (p *PodContext) injectForExt() {
 			klog.V(5).Infof("set pod %v/%v memory limit %v on cgroup parent %v",
 				p.Request.PodMeta.Namespace, p.Request.PodMeta.Name, *p.Response.Resources.MemoryLimit, p.Request.CgroupParent)
 		}
+	}
+	if p.Response.Resources.Resctrl != nil {
+		klog.Infof("-------kkk------%s %s", p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.Schemata)
+		eventHelper := audit.V(3).Pod(p.Request.PodMeta.Namespace, p.Request.PodMeta.Name).Reason("runtime-hooks").Message(
+			"set pod LLC/MB limit to %v", *p.Response.Resources.Resctrl)
+		if p.Response.Resources.Resctrl.Closid != "" && p.Response.Resources.Resctrl.Schemata != "" {
+			updater, err := injectResctrl(p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.Schemata, eventHelper, p.executor)
+			if err != nil {
+				klog.Infof("set pod %v/%v LLC/MB limit %v on cgroup parent %v failed, error %v", p.Request.PodMeta.Namespace,
+					p.Request.PodMeta.Name, p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.Schemata, err)
+			} else {
+				p.updaters = append(p.updaters, updater)
+				klog.V(5).Infof("set pod %v/%v memory limit %v on cgroup parent %v",
+					p.Request.PodMeta.Namespace, p.Request.PodMeta.Name, *p.Response.Resources.Resctrl, p.Request.CgroupParent)
+			}
+		}
+
+		if len(p.Response.Resources.Resctrl.NewTaskIds) > 0 {
+			klog.Infof("============pod Context====== %v", p.Response.Resources.Resctrl.NewTaskIds)
+			updater, err := resourceexecutor.CalculateResctrlL3TasksResource(p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.NewTaskIds)
+			if err != nil {
+				klog.V(4).Infof("failed to get l3 tasks resource for group %s, err: %s", p.Response.Resources.Resctrl.Closid, err)
+			} else {
+				p.updaters = append(p.updaters, updater)
+			}
+		}
+	}
+}
+
+func (p *PodContext) removeForExt() {
+	if p.Response.Resources.Resctrl != nil {
+		klog.Infof("-------kkk------%s %s", p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.Schemata)
 	}
 }
