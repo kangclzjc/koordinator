@@ -10,6 +10,7 @@ import (
 	"k8s.io/klog/v2"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -61,17 +62,34 @@ type ResctrlEngine interface {
 	GetApps() map[string]App
 }
 
-func NewRDTEngine() ResctrlEngine {
+func NewRDTEngine() (ResctrlEngine, error) {
+	var CatL3CbmMask string
+	var err error
+	if CatL3CbmMask, err = sysutil.ReadCatL3CbmString(); err != nil {
+		klog.Errorf("get l3 cache bit mask error: %v", err)
+		return nil, err
+	}
+
+	if len(CatL3CbmMask) <= 0 {
+		return nil, fmt.Errorf("failed to get cat l3 cbm, cbm is empty")
+	}
+	cbmValue, err := strconv.ParseUint(CatL3CbmMask, 16, 32)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse cat l3 cbm %s, err: %v", CatL3CbmMask, err)
+	}
+	cbm := uint(cbmValue)
 	return &RDTEngine{
 		Apps:       make(map[string]App),
 		CtrlGroups: make(map[string]Resctrl),
-	}
+		CBM:        cbm,
+	}, nil
 }
 
 type RDTEngine struct {
 	Apps       map[string]App
 	CtrlGroups map[string]Resctrl
 	l          sync.RWMutex
+	CBM        uint
 }
 
 func (R *RDTEngine) UnRegisterApp(podid string) error {
@@ -144,7 +162,7 @@ func (R *RDTEngine) RegisterApp(podid, annotation string) error {
 		return err
 	}
 
-	schemata := ParseSchemata(res)
+	schemata := ParseSchemata(res, R.CBM)
 	app := App{
 		Resctrl: schemata,
 		Closid:  ClosdIdPrefix + podid,
@@ -166,7 +184,7 @@ func calculateIntel(mbaPercent int64) int64 {
 	return mbaPercent
 }
 
-func ParseSchemata(config ResctrlConfig) *sysutil.ResctrlSchemataRaw {
+func ParseSchemata(config ResctrlConfig, cbm uint) *sysutil.ResctrlSchemataRaw {
 	ids, _ := sysutil.CacheIdsCacheFunc()
 	schemataRaw := sysutil.NewResctrlSchemataRaw(ids).WithL3Num(len(ids))
 	if config.MB.Schemata.Percent != 0 {
@@ -180,6 +198,39 @@ func ParseSchemata(config ResctrlConfig) *sysutil.ResctrlSchemataRaw {
 		for _, v := range config.MB.SchemataPerCache {
 			percent := calculateIntel(int64(v.Percent))
 			schemataRaw.MB[v.CacheID] = percent
+		}
+	}
+
+	if config.LLC.Schemata.Range != nil && len(config.LLC.Schemata.Range) == 2 {
+		start := config.LLC.Schemata.Range[0]
+		end := config.LLC.Schemata.Range[1]
+
+		l3MaskValue, err := sysutil.CalculateCatL3MaskValue(cbm, int64(start), int64(end))
+		if err != nil {
+			klog.Warningf("failed to calculate l3 cat schemata err: %v", err)
+			return schemataRaw
+		}
+
+		schemataRaw.WithL3Num(len(ids)).WithL3Mask(l3MaskValue)
+	}
+
+	if config.LLC.SchemataPerCache != nil {
+		for _, v := range config.LLC.SchemataPerCache {
+			if len(v.Range) == 2 {
+				start := v.Range[0]
+				end := v.Range[1]
+				l3MaskValue, err := sysutil.CalculateCatL3MaskValue(cbm, int64(start), int64(end))
+				if err != nil {
+					klog.Warningf("failed to calculate l3 cat schemata err: %v", err)
+					return schemataRaw
+				}
+				// l3 mask MUST be a valid hex
+				maskValue, err := strconv.ParseInt(strings.TrimSpace(l3MaskValue), 16, 64)
+				if err != nil {
+					klog.V(5).Infof("failed to parse l3 mask %s, err: %v", l3MaskValue, err)
+				}
+				schemataRaw.L3[v.CacheID] = maskValue
+			}
 		}
 	}
 	return schemataRaw

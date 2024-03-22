@@ -83,9 +83,14 @@ func (p *plugin) init(apps map[string]util.App) {
 
 func (p *plugin) Register(op hooks.Options) {
 	if vendorID, err := sysutil.GetVendorIDByCPUInfo(sysutil.GetCPUInfoPath()); err == nil && vendorID == sysutil.INTEL_VENDOR_ID {
-		p.engine = util.NewRDTEngine()
+		p.engine, err = util.NewRDTEngine()
+		if err != nil {
+			klog.Errorf("New RDT Engine failed, error is %v", err)
+			return
+		}
 	} else {
 		//TODO: add AMD resctrl engine
+		klog.Errorf("AMD resctrl engine not implemented")
 		return
 	}
 	//
