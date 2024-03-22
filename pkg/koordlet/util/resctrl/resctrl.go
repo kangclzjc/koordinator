@@ -3,20 +3,16 @@ package util
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/protocol"
-	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
 	koordletutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util"
 	sysutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
 	"io/ioutil"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 )
-
-var cgroupReader = resourceexecutor.CgroupV2Reader{}
 
 type Resctrl struct {
 	L3 map[int]string
@@ -56,12 +52,11 @@ type SchemataPerCacheConfig struct {
 
 // TODO: @Bowen we should talk about this interface functions' meaning?
 type ResctrlEngine interface {
-	Rebuild() map[string]App // rebuild the current control group
-	GetCurrentCtrlGroups() map[string]Resctrl
-	Config(schemata string) // TODO:@Bowen use schemata or use policy to parse this string?
-	GetConfig() map[string]string
+	Rebuild() // rebuild the current control group
 	RegisterApp(podid, annotation string) error
+	UnRegisterApp(podid string) error
 	GetApp(podid string) (App, error)
+	GetApps() map[string]App
 }
 
 func NewRDTEngine() ResctrlEngine {
@@ -74,30 +69,47 @@ func NewRDTEngine() ResctrlEngine {
 type RDTEngine struct {
 	Apps       map[string]App
 	CtrlGroups map[string]Resctrl
-	Policy     ResctrlPolicy
+	l          sync.RWMutex
 }
 
-func (R *RDTEngine) Rebuild() map[string]App {
-	// 获取 resctrl 文件系统根目录
+func (R *RDTEngine) UnRegisterApp(podid string) error {
+	if _, ok := R.Apps[podid]; !ok {
+		return fmt.Errorf("pod %s not registered", podid)
+	}
+	R.l.Lock()
+	defer R.l.Unlock()
+	delete(R.Apps, podid)
+	return nil
+}
+
+func (R *RDTEngine) GetApps() map[string]App {
+	R.l.RLock()
+	defer R.l.RUnlock()
+	apps := make(map[string]App)
+	for podid, app := range R.Apps {
+		apps[podid] = app
+	}
+	return apps
+}
+
+func (R *RDTEngine) Rebuild() {
+	// get resctrl filesystem root
 	root := sysutil.GetResctrlSubsystemDirPath()
 
-	// 遍历根目录下的所有目录
 	files, err := os.ReadDir(root)
 	if err != nil {
 		klog.Errorf("read %s failed err is %v", root, err)
-		return nil
+		return
 	}
 
 	for _, file := range files {
-		// 判断是否是目录
 		if file.IsDir() && strings.HasPrefix(file.Name(), "koordlet") {
-			// 判断是否是控制组
 			path := filepath.Join(root, file.Name(), "schemata")
 			if _, err := os.Stat(path); err == nil {
 				content, err := ioutil.ReadFile(path)
 				if err != nil {
-					fmt.Println(err)
-					return R.Apps
+					klog.Errorf("read resctrl file path fail, %v", err)
+					return
 				}
 				schemata := string(content)
 				ids, _ := sysutil.CacheIdsCacheFunc()
@@ -107,6 +119,8 @@ func (R *RDTEngine) Rebuild() map[string]App {
 					klog.Errorf("failed to parse %v", err)
 				}
 				podid := strings.TrimPrefix(file.Name(), "koordlet-")
+				R.l.Lock()
+				defer R.l.Unlock()
 				R.Apps[podid] = App{
 					Resctrl: schemataRaw,
 					Closid:  file.Name(),
@@ -114,24 +128,8 @@ func (R *RDTEngine) Rebuild() map[string]App {
 			}
 		}
 	}
-	return R.Apps
 }
 
-func (R *RDTEngine) GetCurrentCtrlGroups() map[string]Resctrl {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (R *RDTEngine) Config(config string) {
-	//TODO implement me
-}
-
-func (R *RDTEngine) GetConfig() map[string]string {
-	//TODO implement me
-	panic("implement me")
-}
-
-// annotation is resctl string
 func (R *RDTEngine) RegisterApp(podid, annotation string) error {
 	if _, ok := R.Apps[podid]; ok {
 		return fmt.Errorf("pod %s already registered", podid)
@@ -156,6 +154,8 @@ func (R *RDTEngine) RegisterApp(podid, annotation string) error {
 		Resctrl: schemata,
 		Closid:  "koordlet-" + podid,
 	}
+	R.l.Lock()
+	defer R.l.Unlock()
 	R.Apps[podid] = app
 	return nil
 }
@@ -191,6 +191,9 @@ func ParseSchemata(config ResctrlConfig) *sysutil.ResctrlSchemataRaw {
 }
 
 func (R *RDTEngine) GetApp(id string) (App, error) {
+	R.l.RLock()
+	defer R.l.RUnlock()
+
 	if v, ok := R.Apps[id]; ok {
 		return v, nil
 	} else {
@@ -198,21 +201,15 @@ func (R *RDTEngine) GetApp(id string) (App, error) {
 	}
 }
 
-// TODO:@Bowen use policy to change some action in the future? Any ideas?
-type ResctrlPolicy interface {
-}
-
 func GetPodCgroupNewTaskIdsFromPodCtx(podMeta *protocol.PodContext, tasksMap map[int32]struct{}) []int32 {
 	var taskIds []int32
 
-	klog.Infof("--------------- current podMeat is %v", podMeta.Request)
 	for containerId, v := range podMeta.Request.ContainerTaskIds {
 		containerDir, err := koordletutil.GetContainerCgroupParentDirByID(podMeta.Request.CgroupParent, containerId)
 		if err != nil {
 			klog.Errorf("container %s lost during reconcile", containerDir)
 			continue
 		}
-		klog.Infof("--------------- current ContainerDir is %s", containerDir)
 		ids, err := GetNewTaskIds(v, tasksMap)
 		if err != nil {
 			klog.Warningf("failed to get pod container cgroup task ids for container %s/%s/%s, err: %s",
@@ -222,89 +219,6 @@ func GetPodCgroupNewTaskIdsFromPodCtx(podMeta *protocol.PodContext, tasksMap map
 		taskIds = append(taskIds, ids...)
 	}
 	return taskIds
-}
-
-func GetPodCgroupNewTaskIds(podMeta *statesinformer.PodMeta, tasksMap map[int32]struct{}) []int32 {
-	var taskIds []int32
-
-	pod := podMeta.Pod
-	containerMap := make(map[string]*corev1.Container, len(pod.Spec.Containers))
-	for i := range pod.Spec.Containers {
-		container := &pod.Spec.Containers[i]
-		containerMap[container.Name] = container
-	}
-	for _, containerStat := range pod.Status.ContainerStatuses {
-		// reconcile containers
-		container, exist := containerMap[containerStat.Name]
-		if !exist {
-			klog.Warningf("container %s/%s/%s lost during reconcile resctrl group", pod.Namespace,
-				pod.Name, containerStat.Name)
-			continue
-		}
-
-		containerDir, err := koordletutil.GetContainerCgroupParentDir(podMeta.CgroupDir, &containerStat)
-		if err != nil {
-			klog.V(4).Infof("failed to get pod container cgroup path for container %s/%s/%s, err: %s",
-				pod.Namespace, pod.Name, container.Name, err)
-			continue
-		}
-
-		klog.Infof("--------------- current ContainerDir is %s", containerDir)
-		ids, err := GetContainerCgroupNewTaskIds(containerDir, tasksMap)
-		if err != nil {
-			klog.Warningf("failed to get pod container cgroup task ids for container %s/%s/%s, err: %s",
-				pod.Namespace, pod.Name, container.Name, err)
-			continue
-		}
-		taskIds = append(taskIds, ids...)
-	}
-
-	// try retrieve task IDs from the sandbox container, especially for VM-based container runtime
-	sandboxID, err := koordletutil.GetPodSandboxContainerID(pod)
-	if err != nil {
-		klog.V(4).Infof("failed to get sandbox container ID for pod %s/%s, err: %s",
-			pod.Namespace, pod.Name, err)
-		return taskIds
-	}
-	sandboxContainerDir, err := koordletutil.GetContainerCgroupParentDirByID(podMeta.CgroupDir, sandboxID)
-	if err != nil {
-		klog.V(4).Infof("failed to get pod container cgroup path for sandbox container %s/%s/%s, err: %s",
-			pod.Namespace, pod.Name, sandboxID, err)
-		return taskIds
-	}
-	ids, err := GetContainerCgroupNewTaskIds(sandboxContainerDir, tasksMap)
-	if err != nil {
-		klog.Warningf("failed to get pod container cgroup task ids for sandbox container %s/%s/%s, err: %s",
-			pod.Namespace, pod.Name, sandboxID, err)
-		return taskIds
-	}
-	taskIds = append(taskIds, ids...)
-
-	return taskIds
-}
-
-func GetContainerCgroupNewTaskIds(containerParentDir string, tasksMap map[int32]struct{}) ([]int32, error) {
-	ids, err := cgroupReader.ReadCPUTasks(containerParentDir)
-	if err != nil && resourceexecutor.IsCgroupDirErr(err) {
-		klog.V(5).Infof("failed to read container task ids whose cgroup path %s does not exists, err: %s",
-			containerParentDir, err)
-		return nil, nil
-	} else if err != nil {
-		return nil, fmt.Errorf("failed to read container task ids, err: %w", err)
-	}
-
-	if tasksMap == nil {
-		return ids, nil
-	}
-
-	// only append the non-mapped ids
-	var taskIDs []int32
-	for _, id := range ids {
-		if _, ok := tasksMap[id]; !ok {
-			taskIDs = append(taskIDs, id)
-		}
-	}
-	return taskIDs, nil
 }
 
 func GetNewTaskIds(ids []int32, tasksMap map[int32]struct{}) ([]int32, error) {
