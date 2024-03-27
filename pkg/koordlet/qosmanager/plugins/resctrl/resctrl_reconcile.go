@@ -462,7 +462,7 @@ func (r *resctrlReconcile) reconcileResctrlGroups(qosStrategy *slov1alpha1.Resou
 		pod := podMeta.Pod
 
 		// only QoS class level pod are considered
-		if _, ok := pod.Annotations[apiext.ResctrlAnno]; ok {
+		if _, ok := pod.Annotations[apiext.AnnotationResctrl]; ok {
 			continue
 		}
 		// only Running and Pending pods are considered

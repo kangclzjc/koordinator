@@ -22,6 +22,7 @@ import (
 	rmconfig "github.com/koordinator-sh/koordinator/pkg/runtimeproxy/config"
 	corev1 "k8s.io/api/core/v1"
 	"os"
+	"strings"
 
 	"k8s.io/klog/v2"
 
@@ -66,7 +67,7 @@ func (p *plugin) init(apps map[string]util.App) {
 	currentPods := make(map[string]*corev1.Pod)
 	for _, podMeta := range podsMeta {
 		pod := podMeta.Pod
-		if _, ok := podMeta.Pod.Annotations[apiext.ResctrlAnno]; ok {
+		if _, ok := podMeta.Pod.Annotations[apiext.AnnotationResctrl]; ok {
 			group := string(podMeta.Pod.UID)
 			currentPods[group] = pod
 		}
@@ -82,6 +83,15 @@ func (p *plugin) init(apps map[string]util.App) {
 }
 
 func (p *plugin) Register(op hooks.Options) {
+	// skip if host not support resctrl
+	if support, err := system.IsSupportResctrl(); err != nil {
+		klog.Warningf("check support resctrl failed, err: %s", err)
+		return
+	} else if !support {
+		klog.V(5).Infof("resctrl runtime hook skipped, cpu not support CAT/MBA")
+		return
+	}
+
 	if vendorID, err := sysutil.GetVendorIDByCPUInfo(sysutil.GetCPUInfoPath()); err == nil && vendorID == sysutil.INTEL_VENDOR_ID {
 		p.engine, err = util.NewRDTEngine()
 		if err != nil {
@@ -90,15 +100,15 @@ func (p *plugin) Register(op hooks.Options) {
 		}
 	} else {
 		//TODO: add AMD resctrl engine
-		klog.Errorf("AMD resctrl engine not implemented")
+		klog.Warningf("AMD resctrl engine not implemented")
 		return
 	}
-	//
+
 	hooks.Register(rmconfig.PreRunPodSandbox, name, description+" (pod)", p.SetPodResctrlResources)
 	hooks.Register(rmconfig.PreCreateContainer, name, description+" (pod)", p.SetContainerResctrlResources)
 	hooks.Register(rmconfig.PreRemoveRunPodSandbox, name, description+" (pod)", p.RemovePodResctrlResources)
 	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlSchemata, description+" (pod resctrl schema)", p.SetPodResctrlResources, reconciler.NoneFilter())
-	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlSchemata, description+" (pod resctrl schema)", p.RemovePodResctrlResources, reconciler.NoneFilter())
+	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlRoot, description+" (pod resctrl schema)", p.RemovePodResctrlResources, reconciler.NoneFilter())
 	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlTasks, description+" (pod resctrl tasks)", p.UpdatePodTaskIds, reconciler.NoneFilter())
 	reconciler.RegisterCgroupReconciler4AllPods(reconciler.AllPodsLevel, system.ResctrlRoot, description+" (pod resctl taskids)", p.RemoveUnusedResctrlPath, reconciler.PodAnnotationResctrlFilter(), "resctrl")
 
@@ -115,7 +125,7 @@ func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
 		return fmt.Errorf("pod protocol is nil for plugin %v", name)
 	}
 
-	if v, ok := podCtx.Request.Annotations[apiext.ResctrlAnno]; ok {
+	if v, ok := podCtx.Request.Annotations[apiext.AnnotationResctrl]; ok {
 		resctrlInfo := &protocol.Resctrl{
 			NewTaskIds: make([]int32, 0),
 		}
@@ -128,7 +138,20 @@ func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
 		if err != nil {
 			return err
 		}
-		resctrlInfo.Schemata = app.Resctrl.MBString()
+		items := []string{}
+		for _, item := range []struct {
+			validFunc func() (bool, string)
+			value     func() string
+		}{
+			{validFunc: app.Resctrl.ValidateL3, value: app.Resctrl.L3String},
+			{validFunc: app.Resctrl.ValidateMB, value: app.Resctrl.MBString},
+		} {
+			if valid, _ := item.validFunc(); valid {
+				items = append(items, item.value())
+			}
+		}
+		schemataStr := strings.Join(items, "")
+		resctrlInfo.Schemata = schemataStr
 		resctrlInfo.Closid = app.Closid
 		podCtx.Response.Resources.Resctrl = resctrlInfo
 	}
@@ -145,7 +168,7 @@ func (p *plugin) RemoveUnusedResctrlPath(protos []protocol.HooksProtocol) error 
 			return fmt.Errorf("pod protocol is nil for plugin %v", name)
 		}
 
-		if _, ok := podCtx.Request.Annotations[apiext.ResctrlAnno]; ok {
+		if _, ok := podCtx.Request.Annotations[apiext.AnnotationResctrl]; ok {
 			group := string(podCtx.Request.PodMeta.UID)
 			currentPods[group] = podCtx
 		}
@@ -167,7 +190,7 @@ func (p *plugin) UpdatePodTaskIds(proto protocol.HooksProtocol) error {
 		return fmt.Errorf("pod protocol is nil for plugin %v", name)
 	}
 
-	if _, ok := podCtx.Request.Annotations[apiext.ResctrlAnno]; ok {
+	if _, ok := podCtx.Request.Annotations[apiext.AnnotationResctrl]; ok {
 		curTaskMaps := map[string]map[int32]struct{}{}
 		var err error
 		group := string(podCtx.Request.PodMeta.UID)
@@ -193,7 +216,7 @@ func (p *plugin) SetContainerResctrlResources(proto protocol.HooksProtocol) erro
 		return fmt.Errorf("container protocol is nil for plugin %v", name)
 	}
 
-	if _, ok := containerCtx.Request.PodAnnotations[apiext.ResctrlAnno]; ok {
+	if _, ok := containerCtx.Request.PodAnnotations[apiext.AnnotationResctrl]; ok {
 		containerCtx.Response.Resources.Resctrl = &protocol.Resctrl{
 			Schemata:   "",
 			Hook:       "",
@@ -211,7 +234,7 @@ func (p *plugin) RemovePodResctrlResources(proto protocol.HooksProtocol) error {
 		return fmt.Errorf("pod protocol is nil for plugin %v", name)
 	}
 
-	if _, ok := podCtx.Request.Annotations[apiext.ResctrlAnno]; ok {
+	if _, ok := podCtx.Request.Annotations[apiext.AnnotationResctrl]; ok {
 		resctrlInfo := &protocol.Resctrl{
 			NewTaskIds: make([]int32, 0),
 		}
@@ -221,6 +244,7 @@ func (p *plugin) RemovePodResctrlResources(proto protocol.HooksProtocol) error {
 		}
 		resctrlInfo.Closid = app.Closid
 		podCtx.Response.Resources.Resctrl = resctrlInfo
+		p.engine.UnRegisterApp(podCtx.Request.PodMeta.UID)
 	}
 	return nil
 }

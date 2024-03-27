@@ -146,7 +146,7 @@ func (p *podAnnotationResctrlFilter) Name() string {
 }
 
 func (p *podAnnotationResctrlFilter) Filter(podMeta *statesinformer.PodMeta) string {
-	if _, ok := podMeta.Pod.Annotations[apiext.ResctrlAnno]; ok {
+	if _, ok := podMeta.Pod.Annotations[apiext.AnnotationResctrl]; ok {
 		return podAnnotationResctrlFilterName
 	}
 
@@ -403,7 +403,7 @@ func (c *reconciler) reconcilePodCgroup(stopCh <-chan struct{}) {
 			currentPods := make(map[string]*corev1.Pod)
 			for _, podMeta := range podsMeta {
 				pod := podMeta.Pod
-				if _, ok := podMeta.Pod.Annotations[apiext.ResctrlAnno]; ok {
+				if _, ok := podMeta.Pod.Annotations[apiext.AnnotationResctrl]; ok {
 					group := string(podMeta.Pod.UID)
 					currentPods[group] = pod
 				}
