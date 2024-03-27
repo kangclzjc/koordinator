@@ -18,19 +18,18 @@ package protocol
 
 import (
 	"fmt"
-	"github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
 	"os"
-
-	"github.com/containerd/nri/pkg/api"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 
+	"github.com/containerd/nri/pkg/api"
 	apiext "github.com/koordinator-sh/koordinator/apis/extension"
 	runtimeapi "github.com/koordinator-sh/koordinator/apis/runtime/v1alpha1"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/audit"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
 	"github.com/koordinator-sh/koordinator/pkg/util"
 )
 

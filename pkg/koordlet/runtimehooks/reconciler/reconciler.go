@@ -400,13 +400,7 @@ func (c *reconciler) reconcilePodCgroup(stopCh <-chan struct{}) {
 		select {
 		case <-c.podUpdated:
 			podsMeta := c.getPodsMeta()
-			currentPods := make(map[string]*corev1.Pod)
 			for _, podMeta := range podsMeta {
-				pod := podMeta.Pod
-				if _, ok := podMeta.Pod.Annotations[apiext.AnnotationResctrl]; ok {
-					group := string(podMeta.Pod.UID)
-					currentPods[group] = pod
-				}
 				for _, r := range globalCgroupReconcilers.podLevel {
 					reconcileFn, ok := r.fn[r.filter.Filter(podMeta)]
 					if !ok {
@@ -478,7 +472,7 @@ func (c *reconciler) reconcilePodCgroup(stopCh <-chan struct{}) {
 
 				reconcileFn, ok := r.fn4AllPods[r.filter.Name()]
 				if !ok {
-					klog.Infof("calling reconcile function %v aborted, condition %s not registered",
+					klog.V(5).Infof("calling reconcile function %v aborted, condition %s not registered",
 						r.description, r.filter.Name())
 					continue
 				}

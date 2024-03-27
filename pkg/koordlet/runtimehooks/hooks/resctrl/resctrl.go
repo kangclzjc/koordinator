@@ -18,22 +18,22 @@ package resctrl
 
 import (
 	"fmt"
-	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/reconciler"
-	rmconfig "github.com/koordinator-sh/koordinator/pkg/runtimeproxy/config"
-	corev1 "k8s.io/api/core/v1"
 	"os"
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 
 	apiext "github.com/koordinator-sh/koordinator/apis/extension"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/protocol"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/reconciler"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
 	util "github.com/koordinator-sh/koordinator/pkg/koordlet/util/resctrl"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
 	sysutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
+	rmconfig "github.com/koordinator-sh/koordinator/pkg/runtimeproxy/config"
 )
 
 const (
@@ -77,6 +77,11 @@ func (p *plugin) init(apps map[string]util.App) {
 		if _, ok := currentPods[k]; !ok {
 			if err := os.Remove(system.GetResctrlGroupRootDirPath(v.Closid)); err != nil {
 				klog.Errorf("cannot remove ctrl group, err: %w", err)
+				if os.IsNotExist(err) {
+					p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix))
+				}
+			} else {
+				p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix))
 			}
 		}
 	}

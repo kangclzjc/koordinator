@@ -18,7 +18,6 @@ package runtimehooks
 
 import (
 	"flag"
-	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks/resctrl"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -32,6 +31,7 @@ import (
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks/cpuset"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks/gpu"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks/groupidentity"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks/resctrl"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks/terwayqos"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
 )

@@ -3,17 +3,19 @@ package util
 import (
 	"encoding/json"
 	"fmt"
-	apiext "github.com/koordinator-sh/koordinator/apis/extension"
-	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/protocol"
-	koordletutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util"
-	sysutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
 	"io/ioutil"
-	"k8s.io/klog/v2"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
+
+	"k8s.io/klog/v2"
+
+	apiext "github.com/koordinator-sh/koordinator/apis/extension"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/protocol"
+	koordletutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util"
+	sysutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
 )
 
 const ClosdIdPrefix = "koordlet-"
