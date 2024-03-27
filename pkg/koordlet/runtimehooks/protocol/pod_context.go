@@ -318,9 +318,9 @@ func (p *PodContext) injectForExt() {
 func (p *PodContext) removeForExt() {
 	if p.Response.Resources.Resctrl != nil && p.Response.Resources.Resctrl.Closid != "" {
 		if err := os.Remove(system.GetResctrlGroupRootDirPath(p.Response.Resources.Resctrl.Closid)); err != nil {
-			klog.Infof("cannot remove ctrl group, err: %w", err)
+			klog.V(5).Infof("cannot remove ctrl group, err: %w", err)
 		} else {
-			klog.V(5).Infof("set pod %v/%v memory limit %v on cgroup parent %v",
+			klog.Infof("remove pod %v/%v ctrl group %v on cgroup parent %v",
 				p.Request.PodMeta.Namespace, p.Request.PodMeta.Name, *p.Response.Resources.Resctrl, p.Request.CgroupParent)
 
 		}

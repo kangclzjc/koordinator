@@ -64,11 +64,11 @@ type RDTEngine struct {
 }
 
 func (R *RDTEngine) UnRegisterApp(podid string) error {
+	R.l.Lock()
+	defer R.l.Unlock()
 	if _, ok := R.Apps[podid]; !ok {
 		return fmt.Errorf("pod %s not registered", podid)
 	}
-	R.l.Lock()
-	defer R.l.Unlock()
 	delete(R.Apps, podid)
 	return nil
 }
@@ -111,11 +111,11 @@ func (R *RDTEngine) Rebuild() {
 				}
 				podid := strings.TrimPrefix(file.Name(), ClosdIdPrefix)
 				R.l.Lock()
-				defer R.l.Unlock()
 				R.Apps[podid] = App{
 					Resctrl: schemataRaw,
 					Closid:  file.Name(),
 				}
+				R.l.Unlock()
 			}
 		}
 	}

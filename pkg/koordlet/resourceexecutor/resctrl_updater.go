@@ -58,7 +58,11 @@ func (r *ResctrlSchemataResourceUpdater) Clone() ResourceUpdater {
 func NewResctrlSchemataResource(group, schemata string) (ResourceUpdater, error) {
 	err := sysutil.InitCatGroupIfNotExist(group)
 	if err != nil {
-		klog.Errorf("Init Cat Group failed, error is %v", err)
+		return nil, err
+	}
+
+	if schemata == "" {
+		return nil, fmt.Errorf("schemata is nil")
 	}
 	schemataFile := sysutil.ResctrlSchemata.Path(group)
 	schemataKey := sysutil.ResctrlSchemataName + ":" + schemataFile

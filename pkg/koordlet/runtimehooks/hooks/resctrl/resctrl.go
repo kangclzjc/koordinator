@@ -110,7 +110,7 @@ func (p *plugin) Register(op hooks.Options) {
 	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlSchemata, description+" (pod resctrl schema)", p.SetPodResctrlResources, reconciler.NoneFilter())
 	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlRoot, description+" (pod resctrl schema)", p.RemovePodResctrlResources, reconciler.NoneFilter())
 	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlTasks, description+" (pod resctrl tasks)", p.UpdatePodTaskIds, reconciler.NoneFilter())
-	reconciler.RegisterCgroupReconciler4AllPods(reconciler.AllPodsLevel, system.ResctrlRoot, description+" (pod resctl taskids)", p.RemoveUnusedResctrlPath, reconciler.PodAnnotationResctrlFilter(), "resctrl")
+	reconciler.RegisterCgroupReconciler4AllPods(reconciler.AllPodsLevel, system.ResctrlRoot, description+" (pod resctl schema)", p.RemoveUnusedResctrlPath, reconciler.PodAnnotationResctrlFilter(), "resctrl")
 
 	p.engine.Rebuild()
 	apps := p.engine.GetApps()
@@ -169,15 +169,21 @@ func (p *plugin) RemoveUnusedResctrlPath(protos []protocol.HooksProtocol) error 
 		}
 
 		if _, ok := podCtx.Request.Annotations[apiext.AnnotationResctrl]; ok {
-			group := string(podCtx.Request.PodMeta.UID)
+			group := podCtx.Request.PodMeta.UID
 			currentPods[group] = podCtx
 		}
 	}
 
-	for k, v := range p.engine.GetApps() {
+	apps := p.engine.GetApps()
+	for k, v := range apps {
 		if _, ok := currentPods[k]; !ok {
 			if err := os.Remove(system.GetResctrlGroupRootDirPath(v.Closid)); err != nil {
 				klog.Errorf("cannot remove ctrl group, err: %v", err)
+				if os.IsNotExist(err) {
+					p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix))
+				}
+			} else {
+				p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix))
 			}
 		}
 	}
@@ -193,8 +199,8 @@ func (p *plugin) UpdatePodTaskIds(proto protocol.HooksProtocol) error {
 	if _, ok := podCtx.Request.Annotations[apiext.AnnotationResctrl]; ok {
 		curTaskMaps := map[string]map[int32]struct{}{}
 		var err error
-		group := string(podCtx.Request.PodMeta.UID)
-		curTaskMaps[group], err = system.ReadResctrlTasksMap(group)
+		group := podCtx.Request.PodMeta.UID
+		curTaskMaps[group], err = system.ReadResctrlTasksMap(util.ClosdIdPrefix + group)
 		if err != nil {
 			klog.Warningf("failed to read Cat L3 tasks for resctrl group %s, err: %s", group, err)
 		}
@@ -238,11 +244,8 @@ func (p *plugin) RemovePodResctrlResources(proto protocol.HooksProtocol) error {
 		resctrlInfo := &protocol.Resctrl{
 			NewTaskIds: make([]int32, 0),
 		}
-		app, err := p.engine.GetApp(podCtx.Request.PodMeta.UID)
-		if err != nil {
-			return err
-		}
-		resctrlInfo.Closid = app.Closid
+
+		resctrlInfo.Closid = util.ClosdIdPrefix + podCtx.Request.PodMeta.UID
 		podCtx.Response.Resources.Resctrl = resctrlInfo
 		p.engine.UnRegisterApp(podCtx.Request.PodMeta.UID)
 	}
