@@ -3,6 +3,7 @@ package util
 import (
 	"encoding/json"
 	"fmt"
+	apiext "github.com/koordinator-sh/koordinator/apis/extension"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/protocol"
 	koordletutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util"
 	sysutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
@@ -17,40 +18,10 @@ import (
 
 const ClosdIdPrefix = "koordlet-"
 
-type Resctrl struct {
-	L3 map[int]string
-	MB map[int]string
-}
-
 type App struct {
 	Resctrl *sysutil.ResctrlSchemataRaw
 	// Hooks   Hook
 	Closid string
-}
-
-type ResctrlConfig struct {
-	LLC LLC `json:"LLC,omitempty"`
-	MB  MB  `json:"MB,omitempty"`
-}
-
-type LLC struct {
-	Schemata         SchemataConfig           `json:"schemata,omitempty"`
-	SchemataPerCache []SchemataPerCacheConfig `json:"schemataPerCache,omitempty"`
-}
-
-type MB struct {
-	Schemata         SchemataConfig           `json:"schemata,omitempty"`
-	SchemataPerCache []SchemataPerCacheConfig `json:"schemataPerCache,omitempty"`
-}
-
-type SchemataConfig struct {
-	Percent int   `json:"percent,omitempty"`
-	Range   []int `json:"range,omitempty"`
-}
-
-type SchemataPerCacheConfig struct {
-	CacheID        int `json:"cacheid,omitempty"`
-	SchemataConfig `json:",inline"`
 }
 
 // TODO: @Bowen we should talk about this interface functions' meaning?
@@ -80,14 +51,14 @@ func NewRDTEngine() (ResctrlEngine, error) {
 	cbm := uint(cbmValue)
 	return &RDTEngine{
 		Apps:       make(map[string]App),
-		CtrlGroups: make(map[string]Resctrl),
+		CtrlGroups: make(map[string]apiext.Resctrl),
 		CBM:        cbm,
 	}, nil
 }
 
 type RDTEngine struct {
 	Apps       map[string]App
-	CtrlGroups map[string]Resctrl
+	CtrlGroups map[string]apiext.Resctrl
 	l          sync.RWMutex
 	CBM        uint
 }
@@ -155,7 +126,7 @@ func (R *RDTEngine) RegisterApp(podid, annotation string) error {
 		return fmt.Errorf("pod %s already registered", podid)
 	}
 	// Parse the JSON value into the BlockIO struct
-	var res ResctrlConfig
+	var res apiext.ResctrlConfig
 	err := json.Unmarshal([]byte(annotation), &res)
 	if err != nil {
 		klog.Errorf("error is %v", err)
@@ -184,7 +155,7 @@ func calculateIntel(mbaPercent int64) int64 {
 	return mbaPercent
 }
 
-func ParseSchemata(config ResctrlConfig, cbm uint) *sysutil.ResctrlSchemataRaw {
+func ParseSchemata(config apiext.ResctrlConfig, cbm uint) *sysutil.ResctrlSchemataRaw {
 	ids, _ := sysutil.CacheIdsCacheFunc()
 	schemataRaw := sysutil.NewResctrlSchemataRaw(ids).WithL3Num(len(ids))
 	if config.MB.Schemata.Percent != 0 {
