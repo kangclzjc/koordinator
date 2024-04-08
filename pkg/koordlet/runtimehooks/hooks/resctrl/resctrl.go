@@ -41,6 +41,17 @@ const (
 	description = "set resctrl for pod"
 )
 
+type Updater func(hooksProtocol protocol.HooksProtocol) error
+
+type ProtocolUpdater struct {
+	hooksProtocol protocol.HooksProtocol
+	Updater       Updater
+}
+
+func (r *ProtocolUpdater) Update() error {
+	return r.Updater(r.hooksProtocol)
+}
+
 // TODO:@Bowen choose parser there or in engine, should we init with some parameters?
 type plugin struct {
 	engine         util.ResctrlEngine
