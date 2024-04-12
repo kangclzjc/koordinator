@@ -18,10 +18,10 @@ package resctrl
 
 import (
 	"fmt"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/rule"
 	"os"
 	"strings"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 
 	apiext "github.com/koordinator-sh/koordinator/apis/extension"
@@ -37,8 +37,9 @@ import (
 )
 
 const (
-	name        = "Resctrl"
-	description = "set resctrl for pod"
+	name               = "Resctrl"
+	description        = "set resctrl for pod"
+	ruleNameForAllPods = name + " (AllPods)"
 )
 
 type Updater func(hooksProtocol protocol.HooksProtocol) error
@@ -54,6 +55,7 @@ func (r *ProtocolUpdater) Update() error {
 
 // TODO:@Bowen choose parser there or in engine, should we init with some parameters?
 type plugin struct {
+	rule           *Rule
 	engine         util.ResctrlEngine
 	executor       resourceexecutor.ResourceUpdateExecutor
 	statesInformer statesinformer.StatesInformer
@@ -70,33 +72,35 @@ func Object() *plugin {
 }
 
 func newPlugin() *plugin {
-	return &plugin{}
-}
-
-func (p *plugin) init(apps map[string]util.App) {
-	podsMeta := p.statesInformer.GetAllPods()
-	currentPods := make(map[string]*corev1.Pod)
-	for _, podMeta := range podsMeta {
-		pod := podMeta.Pod
-		if _, ok := podMeta.Pod.Annotations[apiext.AnnotationResctrl]; ok {
-			group := string(podMeta.Pod.UID)
-			currentPods[group] = pod
-		}
-	}
-
-	for k, v := range apps {
-		if _, ok := currentPods[k]; !ok {
-			if err := os.Remove(system.GetResctrlGroupRootDirPath(v.Closid)); err != nil {
-				klog.Errorf("cannot remove ctrl group, err: %w", err)
-				if os.IsNotExist(err) {
-					p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix))
-				}
-			} else {
-				p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix))
-			}
-		}
+	return &plugin{
+		rule: newRule(),
 	}
 }
+
+//func (p *plugin) init(apps map[string]util.App) {
+//	podsMeta := p.statesInformer.GetAllPods()
+//	currentPods := make(map[string]*corev1.Pod)
+//	for _, podMeta := range podsMeta {
+//		pod := podMeta.Pod
+//		if _, ok := podMeta.Pod.Annotations[apiext.AnnotationResctrl]; ok {
+//			group := string(podMeta.Pod.UID)
+//			currentPods[group] = pod
+//		}
+//	}
+//
+//	for k, v := range apps {
+//		if _, ok := currentPods[k]; !ok {
+//			if err := os.Remove(system.GetResctrlGroupRootDirPath(v.Closid)); err != nil {
+//				klog.Errorf("cannot remove ctrl group, err: %w", err)
+//				if os.IsNotExist(err) {
+//					p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix))
+//				}
+//			} else {
+//				p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix))
+//			}
+//		}
+//	}
+//}
 
 func (p *plugin) Register(op hooks.Options) {
 	// skip if host not support resctrl
@@ -119,7 +123,11 @@ func (p *plugin) Register(op hooks.Options) {
 		klog.Warningf("AMD resctrl engine not implemented")
 		return
 	}
+	p.executor = op.Executor
+	p.statesInformer = op.StatesInformer
 
+	rule.Register(ruleNameForAllPods, description,
+		rule.WithUpdateCallback(p.ruleUpdateCbForAllPods))
 	hooks.Register(rmconfig.PreRunPodSandbox, name, description+" (pod)", p.SetPodResctrlResources)
 	hooks.Register(rmconfig.PreCreateContainer, name, description+" (pod)", p.SetContainerResctrlResources)
 	hooks.Register(rmconfig.PreRemoveRunPodSandbox, name, description+" (pod)", p.RemovePodResctrlResources)
@@ -128,11 +136,6 @@ func (p *plugin) Register(op hooks.Options) {
 	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlTasks, description+" (pod resctrl tasks)", p.UpdatePodTaskIds, reconciler.NoneFilter())
 	reconciler.RegisterCgroupReconciler4AllPods(reconciler.AllPodsLevel, system.ResctrlRoot, description+" (pod resctl schema)", p.RemoveUnusedResctrlPath, reconciler.PodAnnotationResctrlFilter(), "resctrl")
 
-	p.engine.Rebuild()
-	apps := p.engine.GetApps()
-	p.executor = op.Executor
-	p.statesInformer = op.StatesInformer
-	p.init(apps)
 }
 
 func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {

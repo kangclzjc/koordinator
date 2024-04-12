@@ -3,7 +3,7 @@ package util
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -55,11 +55,13 @@ func NewRDTEngine() (ResctrlEngine, error) {
 		Apps:       make(map[string]App),
 		CtrlGroups: make(map[string]apiext.Resctrl),
 		CBM:        cbm,
+		Cgm:        NewControlGroupManager(nil, nil, nil),
 	}, nil
 }
 
 type RDTEngine struct {
 	Apps       map[string]App
+	Cgm        ControlGroupManager
 	CtrlGroups map[string]apiext.Resctrl
 	l          sync.RWMutex
 	CBM        uint
@@ -99,10 +101,14 @@ func (R *RDTEngine) Rebuild() {
 		if file.IsDir() && strings.HasPrefix(file.Name(), ClosdIdPrefix) {
 			path := filepath.Join(root, file.Name(), "schemata")
 			if _, err := os.Stat(path); err == nil {
-				content, err := ioutil.ReadFile(path)
+				reader, err := os.Open(path)
+				if err != nil {
+					klog.Errorf("open resctrl file path fail, %v", err)
+				}
+				content, err := io.ReadAll(reader)
 				if err != nil {
 					klog.Errorf("read resctrl file path fail, %v", err)
-					return
+					continue
 				}
 				schemata := string(content)
 				ids, _ := sysutil.CacheIdsCacheFunc()
