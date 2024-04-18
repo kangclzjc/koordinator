@@ -38,7 +38,7 @@ type App struct {
 type ResctrlEngine interface {
 	Rebuild() // rebuild the current control group
 	RegisterApp(podid, annotation string, updater ProtocolUpdater) error
-	UnRegisterApp(podid string) error
+	UnRegisterApp(podid string, updater ProtocolUpdater) error
 	GetApp(podid string) (App, error)
 	GetApps() map[string]App
 }
@@ -76,9 +76,11 @@ type RDTEngine struct {
 	CBM        uint
 }
 
-func (R *RDTEngine) UnRegisterApp(podid string) error {
+func (R *RDTEngine) UnRegisterApp(podid string, updater ProtocolUpdater) error {
 	R.l.Lock()
 	defer R.l.Unlock()
+	R.Cgm.RemovePod(podid, true, updater)
+
 	if _, ok := R.Apps[podid]; !ok {
 		return fmt.Errorf("pod %s not registered", podid)
 	}
@@ -155,7 +157,6 @@ func (R *RDTEngine) RegisterApp(podid, annotation string, updater ProtocolUpdate
 		Resctrl: schemata,
 		Closid:  ClosdIdPrefix + podid,
 	}
-	updater.SetKey(ClosdIdPrefix + podid)
 
 	items := []string{}
 	for _, item := range []struct {
@@ -170,8 +171,13 @@ func (R *RDTEngine) RegisterApp(podid, annotation string, updater ProtocolUpdate
 		}
 	}
 	schemataStr := strings.Join(items, "")
-	updater.SetValue(schemataStr)
-	updater.Update()
+	if updater != nil {
+		updater.SetKey(ClosdIdPrefix + podid)
+		updater.SetValue(schemataStr)
+		updater.Update()
+	}
+	R.Cgm.AddPod(podid, schemataStr, true, updater, nil)
+
 	R.l.Lock()
 	defer R.l.Unlock()
 	R.Apps[podid] = app

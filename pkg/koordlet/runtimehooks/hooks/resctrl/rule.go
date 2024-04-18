@@ -49,10 +49,10 @@ func (p *plugin) ruleUpdateCbForAllPods(target *statesinformer.CallbackTarget) e
 			if err := os.Remove(system.GetResctrlGroupRootDirPath(v.Closid)); err != nil {
 				klog.Errorf("cannot remove ctrl group, err: %w", err)
 				if os.IsNotExist(err) {
-					p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix))
+					p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix), nil)
 				}
 			} else {
-				p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix))
+				p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix), nil)
 			}
 		}
 	}

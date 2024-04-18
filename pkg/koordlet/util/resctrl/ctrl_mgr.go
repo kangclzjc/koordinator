@@ -89,11 +89,12 @@ func (c *ControlGroupManager) Init() {
 	}
 }
 
-func (c *ControlGroupManager) AddPod(podid string, schemata string, fromNRI bool) {
+func (c *ControlGroupManager) AddPod(podid string, schemata string, fromNRI bool, createUpdater ProtocolUpdater, schemataUpdater ProtocolUpdater) {
 	c.Lock()
 	defer c.Unlock()
 	p, ok := c.rdtcgs.Get(podid)
-	pod := p.(*ControlGroup)
+
+	var pod *ControlGroup
 	if !ok {
 		pod = &ControlGroup{
 			Appid:    podid,
@@ -101,11 +102,13 @@ func (c *ControlGroupManager) AddPod(podid string, schemata string, fromNRI bool
 			Schemata: "",
 			Status:   Add,
 		}
+	} else {
+		pod = p.(*ControlGroup)
 	}
 
 	if pod.Status == Add && pod.Groupid == "" {
-		if c.CreateUpdater != nil {
-			err := c.CreateUpdater.Update(ClosdIdPrefix + podid)
+		if createUpdater != nil {
+			err := createUpdater.Update()
 			if err != nil {
 				klog.Errorf("create ctrl group error %v", err)
 			} else {
@@ -113,13 +116,12 @@ func (c *ControlGroupManager) AddPod(podid string, schemata string, fromNRI bool
 			}
 		}
 
-		if c.SchemataUpdater != nil {
-			err := c.SchemataUpdater.Update(podid, schemata)
+		if schemataUpdater != nil {
+			err := schemataUpdater.Update()
 			if err != nil {
 				klog.Errorf("updater ctrl group schemata error %v", err)
-			} else {
-				pod.Schemata = schemata
 			}
+			pod.Schemata = schemata
 		}
 
 		c.rdtcgs.Set(podid, pod, gocache.DefaultExpiration)
@@ -128,13 +130,12 @@ func (c *ControlGroupManager) AddPod(podid string, schemata string, fromNRI bool
 		if pod.Status == Add && pod.Groupid != "" {
 			if !fromNRI {
 				// Update Schemata
-				if c.SchemataUpdater != nil {
-					err := c.SchemataUpdater.Update(podid, schemata)
+				if schemataUpdater != nil {
+					err := schemataUpdater.Update()
 					if err != nil {
 						klog.Errorf("updater ctrl group schemata error %v", err)
-					} else {
-						pod.Schemata = schemata
 					}
+					pod.Schemata = schemata
 				}
 				c.rdtcgs.Set(podid, pod, gocache.DefaultExpiration)
 			}
@@ -142,26 +143,25 @@ func (c *ControlGroupManager) AddPod(podid string, schemata string, fromNRI bool
 	}
 }
 
-func (c *ControlGroupManager) RemovePod(podid string, fromNRI bool) {
+func (c *ControlGroupManager) RemovePod(podid string, fromNRI bool, removeUpdater ProtocolUpdater) {
 	c.Lock()
 	defer c.Unlock()
 
 	// RemovePendingPods.Add(pod) => add a special
 	p, ok := c.rdtcgs.Get(podid)
-	pod := p.(*ControlGroup)
 	if !ok {
-		pod = &ControlGroup{podid, "", "", Remove}
-		err := c.RemoveUpdater.Update(podid)
+		pod := &ControlGroup{podid, "", "", Remove}
+		err := removeUpdater.Update()
 		if err != nil {
 			klog.Errorf("remove updater fail %v", err)
 		}
 		c.rdtcgs.Set(podid, pod, gocache.DefaultExpiration)
 		return
 	}
-
+	pod := p.(*ControlGroup)
 	if fromNRI && pod.Status == Add {
 		pod.Status = Remove
-		err := c.RemoveUpdater.Update(podid)
+		err := removeUpdater.Update()
 		if err != nil {
 			klog.Errorf("remove updater fail %v", err)
 		}

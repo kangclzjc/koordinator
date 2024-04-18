@@ -28,7 +28,6 @@ import (
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/resourceexecutor"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/hooks"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/protocol"
-	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/reconciler"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
 	util "github.com/koordinator-sh/koordinator/pkg/koordlet/util/resctrl"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
@@ -94,29 +93,53 @@ func NewCreateResctrlUpdater(hooksProtocol protocol.HooksProtocol) util.Protocol
 	}
 }
 
+func NewRemoveResctrlUpdater(hooksProtocol protocol.HooksProtocol) util.ProtocolUpdater {
+	return &CreateResctrlProtocolUpdater{
+		DefaultResctrlProtocolUpdater: DefaultResctrlProtocolUpdater{
+			hooksProtocol: hooksProtocol,
+			updateFunc:    RemoveResctrlUpdaterFunc,
+		},
+	}
+}
+
 func CreateResctrlUpdaterFunc(u util.ProtocolUpdater) error {
 	r, ok := u.(*CreateResctrlProtocolUpdater)
 	if !ok {
 		return fmt.Errorf("not a ResctrlSchemataResourceUpdater")
 	}
 
-	resctrlInfo := &protocol.Resctrl{
-		NewTaskIds: make([]int32, 0),
-	}
-	resctrlInfo.Schemata = r.Value()
-	resctrlInfo.Closid = r.Key()
-
 	podCtx, ok := r.hooksProtocol.(*protocol.PodContext)
 	if !ok {
 		return fmt.Errorf("pod protocol is nil for plugin %v", name)
 	}
-
-	podCtx.Response.Resources.Resctrl = resctrlInfo
-
+	if podCtx.Response.Resources.Resctrl != nil {
+		podCtx.Response.Resources.Resctrl.Schemata = r.Value()
+		podCtx.Response.Resources.Resctrl.Closid = r.Key()
+	} else {
+		resctrlInfo := &protocol.Resctrl{
+			NewTaskIds: make([]int32, 0),
+		}
+		resctrlInfo.Schemata = r.Value()
+		resctrlInfo.Closid = r.Key()
+		podCtx.Response.Resources.Resctrl = resctrlInfo
+	}
 	return nil
 }
 
-func RemoveResctrlUpdaterFunc(hooksProtocol protocol.HooksProtocol) error {
+func RemoveResctrlUpdaterFunc(u util.ProtocolUpdater) error {
+	r, ok := u.(*CreateResctrlProtocolUpdater)
+	if !ok {
+		return fmt.Errorf("not a ResctrlSchemataResourceUpdater")
+	}
+	resctrlInfo := &protocol.Resctrl{
+		NewTaskIds: make([]int32, 0),
+	}
+	podCtx, ok := r.hooksProtocol.(*protocol.PodContext)
+	if !ok {
+		return fmt.Errorf("pod protocol is nil for plugin %v", name)
+	}
+	resctrlInfo.Closid = util.ClosdIdPrefix + podCtx.Request.PodMeta.UID
+	podCtx.Response.Resources.Resctrl = resctrlInfo
 	return nil
 }
 
@@ -202,15 +225,15 @@ func (p *plugin) Register(op hooks.Options) {
 	hooks.Register(rmconfig.PreRunPodSandbox, name, description+" (pod)", p.SetPodResctrlResources)
 	hooks.Register(rmconfig.PreCreateContainer, name, description+" (pod)", p.SetContainerResctrlResources)
 	hooks.Register(rmconfig.PreRemoveRunPodSandbox, name, description+" (pod)", p.RemovePodResctrlResources)
-	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlSchemata, description+" (pod resctrl schema)", p.SetPodResctrlResources, reconciler.NoneFilter())
-	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlRoot, description+" (pod resctrl schema)", p.RemovePodResctrlResources, reconciler.NoneFilter())
-	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlTasks, description+" (pod resctrl tasks)", p.UpdatePodTaskIds, reconciler.NoneFilter())
-	reconciler.RegisterCgroupReconciler4AllPods(reconciler.AllPodsLevel, system.ResctrlRoot, description+" (pod resctl schema)", p.RemoveUnusedResctrlPath, reconciler.PodAnnotationResctrlFilter(), "resctrl")
-
+	/*
+		reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlSchemata, description+" (pod resctrl schema)", p.SetPodResctrlResources, reconciler.NoneFilter())
+		reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlRoot, description+" (pod resctrl schema)", p.RemovePodResctrlResources, reconciler.NoneFilter())
+		reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlTasks, description+" (pod resctrl tasks)", p.UpdatePodTaskIds, reconciler.NoneFilter())
+		reconciler.RegisterCgroupReconciler4AllPods(reconciler.AllPodsLevel, system.ResctrlRoot, description+" (pod resctl schema)", p.RemoveUnusedResctrlPath, reconciler.PodAnnotationResctrlFilter(), "resctrl")
+	*/
 }
 
 func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
-	klog.Infof("Resctrl ------- SetPodResctrl")
 	podCtx, ok := proto.(*protocol.PodContext)
 	if !ok {
 		return fmt.Errorf("pod protocol is nil for plugin %v", name)
@@ -273,10 +296,10 @@ func (p *plugin) RemoveUnusedResctrlPath(protos []protocol.HooksProtocol) error 
 			if err := os.Remove(system.GetResctrlGroupRootDirPath(v.Closid)); err != nil {
 				klog.Errorf("cannot remove ctrl group, err: %v", err)
 				if os.IsNotExist(err) {
-					p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix))
+					p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix), nil)
 				}
 			} else {
-				p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix))
+				p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix), nil)
 			}
 		}
 	}
@@ -328,6 +351,7 @@ func (p *plugin) SetContainerResctrlResources(proto protocol.HooksProtocol) erro
 }
 
 func (p *plugin) RemovePodResctrlResources(proto protocol.HooksProtocol) error {
+	klog.Info("------RemovePodResctrl")
 	podCtx, ok := proto.(*protocol.PodContext)
 	if !ok {
 		return fmt.Errorf("pod protocol is nil for plugin %v", name)
@@ -339,8 +363,11 @@ func (p *plugin) RemovePodResctrlResources(proto protocol.HooksProtocol) error {
 		}
 
 		resctrlInfo.Closid = util.ClosdIdPrefix + podCtx.Request.PodMeta.UID
-		podCtx.Response.Resources.Resctrl = resctrlInfo
-		p.engine.UnRegisterApp(podCtx.Request.PodMeta.UID)
+		updater := NewRemoveResctrlUpdater(proto)
+
+		//podCtx.Response.Resources.Resctrl = resctrlInfo
+		p.engine.UnRegisterApp(podCtx.Request.PodMeta.UID, updater)
+		klog.Infof("podCtx.Response ------- %v", *podCtx.Response.Resources.Resctrl)
 	}
 	return nil
 }
