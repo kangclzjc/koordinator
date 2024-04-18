@@ -18,6 +18,15 @@ import (
 	sysutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
 )
 
+type ProtocolUpdater interface {
+	Name() string
+	Key() string
+	Value() string
+	Update() error
+	SetKey(key string)
+	SetValue(key string)
+}
+
 const ClosdIdPrefix = "koordlet-"
 
 type App struct {
@@ -26,16 +35,15 @@ type App struct {
 	Closid string
 }
 
-// TODO: @Bowen we should talk about this interface functions' meaning?
 type ResctrlEngine interface {
 	Rebuild() // rebuild the current control group
-	RegisterApp(podid, annotation string) error
+	RegisterApp(podid, annotation string, updater ProtocolUpdater) error
 	UnRegisterApp(podid string) error
 	GetApp(podid string) (App, error)
 	GetApps() map[string]App
 }
 
-func NewRDTEngine() (ResctrlEngine, error) {
+func NewRDTEngine(createUpdater Updater, schemataUpdater SchemataUpdater, removeUpdater Updater) (ResctrlEngine, error) {
 	var CatL3CbmMask string
 	var err error
 	if CatL3CbmMask, err = sysutil.ReadCatL3CbmString(); err != nil {
@@ -51,11 +59,12 @@ func NewRDTEngine() (ResctrlEngine, error) {
 		return nil, fmt.Errorf("failed to parse cat l3 cbm %s, err: %v", CatL3CbmMask, err)
 	}
 	cbm := uint(cbmValue)
+
 	return &RDTEngine{
 		Apps:       make(map[string]App),
 		CtrlGroups: make(map[string]apiext.Resctrl),
 		CBM:        cbm,
-		Cgm:        NewControlGroupManager(nil, nil, nil),
+		Cgm:        NewControlGroupManager(createUpdater, schemataUpdater, removeUpdater),
 	}, nil
 }
 
@@ -129,7 +138,7 @@ func (R *RDTEngine) Rebuild() {
 	}
 }
 
-func (R *RDTEngine) RegisterApp(podid, annotation string) error {
+func (R *RDTEngine) RegisterApp(podid, annotation string, updater ProtocolUpdater) error {
 	if _, ok := R.Apps[podid]; ok {
 		return fmt.Errorf("pod %s already registered", podid)
 	}
@@ -146,6 +155,23 @@ func (R *RDTEngine) RegisterApp(podid, annotation string) error {
 		Resctrl: schemata,
 		Closid:  ClosdIdPrefix + podid,
 	}
+	updater.SetKey(ClosdIdPrefix + podid)
+
+	items := []string{}
+	for _, item := range []struct {
+		validFunc func() (bool, string)
+		value     func() string
+	}{
+		{validFunc: app.Resctrl.ValidateL3, value: app.Resctrl.L3String},
+		{validFunc: app.Resctrl.ValidateMB, value: app.Resctrl.MBString},
+	} {
+		if valid, _ := item.validFunc(); valid {
+			items = append(items, item.value())
+		}
+	}
+	schemataStr := strings.Join(items, "")
+	updater.SetValue(schemataStr)
+	updater.Update()
 	R.l.Lock()
 	defer R.l.Unlock()
 	R.Apps[podid] = app

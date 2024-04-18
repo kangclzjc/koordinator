@@ -1,16 +1,14 @@
 package util
 
 import (
-	sysutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/metricsadvisor/framework"
+	gocache "github.com/patrickmn/go-cache"
 	"io/ioutil"
+	"k8s.io/klog/v2"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
-
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/klog/v2"
 )
 
 const (
@@ -29,15 +27,15 @@ type SchemataUpdater interface {
 }
 
 type ControlGroup struct {
-	Appid           string
-	Groupid         string
-	Schemata        string
-	Status          string
-	StatusAliveTime int
+	Appid    string
+	Groupid  string
+	Schemata string
+	Status   string
 }
 
 type ControlGroupManager struct {
-	rdtcgs            map[string]*ControlGroup
+	rdtcgs *gocache.Cache
+	//rdtcgs            map[string]*ControlGroup
 	reconcileInterval int64
 	CreateUpdater     Updater
 	SchemataUpdater   SchemataUpdater
@@ -50,6 +48,7 @@ func NewControlGroupManager(createUpdater Updater, schemataUpdater SchemataUpdat
 		CreateUpdater:   createUpdater,
 		SchemataUpdater: schemataUpdater,
 		RemoveUpdater:   removeUpdater,
+		rdtcgs:          gocache.New(StatusAliveTimeThreshold, framework.CleanupInterval),
 	}
 }
 
@@ -72,72 +71,35 @@ func (c *ControlGroupManager) Init() {
 					return
 				}
 				schemata := string(content)
-				ids, _ := sysutil.CacheIdsCacheFunc()
-				schemataRaw := sysutil.NewResctrlSchemataRaw(ids).WithL3Num(len(ids))
-				err = schemataRaw.ParseResctrlSchemata(schemata, -1)
-				if err != nil {
-					klog.Errorf("failed to parse %v", err)
-				}
+				//ids, _ := sysutil.CacheIdsCacheFunc()
+				//schemataRaw := sysutil.NewResctrlSchemataRaw(ids).WithL3Num(len(ids))
+				//err = schemataRaw.ParseResctrlSchemata(schemata, -1)
+				//if err != nil {
+				//	klog.Errorf("failed to parse %v", err)
+				//}
 				podid := strings.TrimPrefix(file.Name(), ClosdIdPrefix)
-				c.rdtcgs[podid] = &ControlGroup{
-					Appid:           podid,
-					Groupid:         file.Name(),
-					Schemata:        schemata,
-					Status:          Add,
-					StatusAliveTime: 0,
-				}
+				c.rdtcgs.Set(podid, &ControlGroup{
+					Appid:    podid,
+					Groupid:  file.Name(),
+					Schemata: schemata,
+					Status:   Add,
+				}, gocache.DefaultExpiration)
 			}
 		}
 	}
-}
-
-func (c *ControlGroupManager) reconcile() {
-	c.Lock()
-	defer c.Unlock()
-
-	for app, cg := range c.rdtcgs {
-		cg.StatusAliveTime++
-		if cg.StatusAliveTime >= StatusAliveTimeThreshold {
-			cg.StatusAliveTime = StatusAliveTimeThreshold
-		}
-		if cg.Status == Remove {
-			if cg.Groupid != "" {
-				if c.RemoveUpdater != nil {
-					err := c.RemoveUpdater.Update(cg.Groupid)
-					if err != nil {
-						klog.Errorf("remove updater fail %v", err)
-					}
-				}
-			}
-			if cg.StatusAliveTime == StatusAliveTimeThreshold {
-				delete(c.rdtcgs, app)
-			}
-		}
-	}
-}
-
-func (c *ControlGroupManager) Start(stopCh <-chan struct{}) {
-	go wait.Until(c.reconcile, time.Duration(c.reconcileInterval), stopCh)
-	c.reconcile()
 }
 
 func (c *ControlGroupManager) AddPod(podid string, schemata string, fromNRI bool) {
 	c.Lock()
 	defer c.Unlock()
-	pod, ok := c.rdtcgs[podid]
+	p, ok := c.rdtcgs.Get(podid)
+	pod := p.(*ControlGroup)
 	if !ok {
 		pod = &ControlGroup{
-			Appid:           podid,
-			Groupid:         "",
-			Schemata:        schemata,
-			Status:          Add,
-			StatusAliveTime: 0,
-		}
-		c.rdtcgs[podid] = pod
-	} else {
-		if (pod.StatusAliveTime == StatusAliveTimeThreshold) && pod.Status == Remove {
-			pod.Status = Add
-			pod.StatusAliveTime = 0
+			Appid:    podid,
+			Groupid:  "",
+			Schemata: "",
+			Status:   Add,
 		}
 	}
 
@@ -159,6 +121,8 @@ func (c *ControlGroupManager) AddPod(podid string, schemata string, fromNRI bool
 				pod.Schemata = schemata
 			}
 		}
+
+		c.rdtcgs.Set(podid, pod, gocache.DefaultExpiration)
 		// Create Ctrl Group and Update Schemata
 	} else {
 		if pod.Status == Add && pod.Groupid != "" {
@@ -172,6 +136,7 @@ func (c *ControlGroupManager) AddPod(podid string, schemata string, fromNRI bool
 						pod.Schemata = schemata
 					}
 				}
+				c.rdtcgs.Set(podid, pod, gocache.DefaultExpiration)
 			}
 		}
 	}
@@ -182,17 +147,24 @@ func (c *ControlGroupManager) RemovePod(podid string, fromNRI bool) {
 	defer c.Unlock()
 
 	// RemovePendingPods.Add(pod) => add a special
-	pod, ok := c.rdtcgs[podid]
+	p, ok := c.rdtcgs.Get(podid)
+	pod := p.(*ControlGroup)
 	if !ok {
-		pod = &ControlGroup{podid, "", "", Remove, 0}
-		c.rdtcgs[podid] = pod
-	}
-
-	if !ok {
+		pod = &ControlGroup{podid, "", "", Remove}
+		err := c.RemoveUpdater.Update(podid)
+		if err != nil {
+			klog.Errorf("remove updater fail %v", err)
+		}
+		c.rdtcgs.Set(podid, pod, gocache.DefaultExpiration)
 		return
 	}
-	if (fromNRI || pod.StatusAliveTime == StatusAliveTimeThreshold) && pod.Status == Add {
+
+	if fromNRI && pod.Status == Add {
 		pod.Status = Remove
-		pod.StatusAliveTime = 0
+		err := c.RemoveUpdater.Update(podid)
+		if err != nil {
+			klog.Errorf("remove updater fail %v", err)
+		}
+		c.rdtcgs.Set(podid, pod, gocache.DefaultExpiration)
 	}
 }

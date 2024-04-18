@@ -42,15 +42,86 @@ const (
 	ruleNameForAllPods = name + " (AllPods)"
 )
 
-type Updater func(hooksProtocol protocol.HooksProtocol) error
+type UpdateFunc func(resource util.ProtocolUpdater) error
 
-type ProtocolUpdater struct {
+type DefaultResctrlProtocolUpdater struct {
 	hooksProtocol protocol.HooksProtocol
-	Updater       Updater
+	group         string
+	schemata      string
+	updateFunc    UpdateFunc
 }
 
-func (r *ProtocolUpdater) Update() error {
-	return r.Updater(r.hooksProtocol)
+func (u DefaultResctrlProtocolUpdater) Name() string {
+	return "default"
+}
+
+func (u DefaultResctrlProtocolUpdater) Key() string {
+	return u.group
+}
+
+func (u DefaultResctrlProtocolUpdater) Value() string {
+	return u.schemata
+}
+
+func (u DefaultResctrlProtocolUpdater) Update() error {
+	return nil
+}
+
+type Updater func(u DefaultResctrlProtocolUpdater) error
+
+type CreateResctrlProtocolUpdater struct {
+	DefaultResctrlProtocolUpdater
+}
+
+func (r *CreateResctrlProtocolUpdater) SetKey(key string) {
+	r.group = key
+}
+
+func (r *CreateResctrlProtocolUpdater) SetValue(val string) {
+	r.schemata = val
+}
+
+func (r *CreateResctrlProtocolUpdater) Update() error {
+	return r.updateFunc(r)
+}
+
+func NewCreateResctrlUpdater(hooksProtocol protocol.HooksProtocol) util.ProtocolUpdater {
+	return &CreateResctrlProtocolUpdater{
+		DefaultResctrlProtocolUpdater: DefaultResctrlProtocolUpdater{
+			hooksProtocol: hooksProtocol,
+			updateFunc:    CreateResctrlUpdaterFunc,
+		},
+	}
+}
+
+func CreateResctrlUpdaterFunc(u util.ProtocolUpdater) error {
+	r, ok := u.(*CreateResctrlProtocolUpdater)
+	if !ok {
+		return fmt.Errorf("not a ResctrlSchemataResourceUpdater")
+	}
+
+	resctrlInfo := &protocol.Resctrl{
+		NewTaskIds: make([]int32, 0),
+	}
+	resctrlInfo.Schemata = r.Value()
+	resctrlInfo.Closid = r.Key()
+
+	podCtx, ok := r.hooksProtocol.(*protocol.PodContext)
+	if !ok {
+		return fmt.Errorf("pod protocol is nil for plugin %v", name)
+	}
+
+	podCtx.Response.Resources.Resctrl = resctrlInfo
+
+	return nil
+}
+
+func RemoveResctrlUpdaterFunc(hooksProtocol protocol.HooksProtocol) error {
+	return nil
+}
+
+func UpdateResctrlUpdaterFunc(hooksProtocol protocol.HooksProtocol) error {
+	return nil
 }
 
 // TODO:@Bowen choose parser there or in engine, should we init with some parameters?
@@ -113,7 +184,7 @@ func (p *plugin) Register(op hooks.Options) {
 	}
 
 	if vendorID, err := sysutil.GetVendorIDByCPUInfo(sysutil.GetCPUInfoPath()); err == nil && vendorID == sysutil.INTEL_VENDOR_ID {
-		p.engine, err = util.NewRDTEngine()
+		p.engine, err = util.NewRDTEngine(nil, nil, nil)
 		if err != nil {
 			klog.Errorf("New RDT Engine failed, error is %v", err)
 			return
@@ -139,6 +210,7 @@ func (p *plugin) Register(op hooks.Options) {
 }
 
 func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
+	klog.Infof("Resctrl ------- SetPodResctrl")
 	podCtx, ok := proto.(*protocol.PodContext)
 	if !ok {
 		return fmt.Errorf("pod protocol is nil for plugin %v", name)
@@ -148,7 +220,8 @@ func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
 		resctrlInfo := &protocol.Resctrl{
 			NewTaskIds: make([]int32, 0),
 		}
-		err := p.engine.RegisterApp(podCtx.Request.PodMeta.UID, v)
+		updater := NewCreateResctrlUpdater(proto)
+		err := p.engine.RegisterApp(podCtx.Request.PodMeta.UID, v, updater)
 		if err != nil {
 			return err
 		}
@@ -172,7 +245,8 @@ func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
 		schemataStr := strings.Join(items, "")
 		resctrlInfo.Schemata = schemataStr
 		resctrlInfo.Closid = app.Closid
-		podCtx.Response.Resources.Resctrl = resctrlInfo
+		klog.Infof("podCtx.Response ------- %v", *podCtx.Response.Resources.Resctrl)
+		//podCtx.Response.Resources.Resctrl = resctrlInfo
 	}
 
 	return nil
