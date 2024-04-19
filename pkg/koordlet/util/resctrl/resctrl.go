@@ -3,9 +3,6 @@ package util
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -99,45 +96,65 @@ func (R *RDTEngine) GetApps() map[string]App {
 }
 
 func (R *RDTEngine) Rebuild() {
-	// get resctrl filesystem root
-	root := sysutil.GetResctrlSubsystemDirPath()
+	R.l.RLock()
+	defer R.l.RUnlock()
+	R.Cgm.Init()
+	for podid, item := range R.Cgm.rdtcgs.Items() {
+		v, ok := item.Object.(*ControlGroup)
+		if !ok {
+			continue
+		}
 
-	files, err := os.ReadDir(root)
-	if err != nil {
-		klog.Errorf("read %s failed err is %v", root, err)
-		return
-	}
-
-	for _, file := range files {
-		if file.IsDir() && strings.HasPrefix(file.Name(), ClosdIdPrefix) {
-			path := filepath.Join(root, file.Name(), "schemata")
-			if _, err := os.Stat(path); err == nil {
-				reader, err := os.Open(path)
-				if err != nil {
-					klog.Errorf("open resctrl file path fail, %v", err)
-				}
-				content, err := io.ReadAll(reader)
-				if err != nil {
-					klog.Errorf("read resctrl file path fail, %v", err)
-					continue
-				}
-				schemata := string(content)
-				ids, _ := sysutil.CacheIdsCacheFunc()
-				schemataRaw := sysutil.NewResctrlSchemataRaw(ids).WithL3Num(len(ids))
-				err = schemataRaw.ParseResctrlSchemata(schemata, -1)
-				if err != nil {
-					klog.Errorf("failed to parse %v", err)
-				}
-				podid := strings.TrimPrefix(file.Name(), ClosdIdPrefix)
-				R.l.Lock()
-				R.Apps[podid] = App{
-					Resctrl: schemataRaw,
-					Closid:  file.Name(),
-				}
-				R.l.Unlock()
-			}
+		ids, _ := sysutil.CacheIdsCacheFunc()
+		schemataRaw := sysutil.NewResctrlSchemataRaw(ids).WithL3Num(len(ids))
+		err := schemataRaw.ParseResctrlSchemata(v.Schemata, -1)
+		if err != nil {
+			klog.Errorf("failed to parse %v", err)
+		}
+		R.Apps[podid] = App{
+			Resctrl: schemataRaw,
+			Closid:  podid,
 		}
 	}
+	// get resctrl filesystem root
+	//root := sysutil.GetResctrlSubsystemDirPath()
+	//
+	//files, err := os.ReadDir(root)
+	//if err != nil {
+	//	klog.Errorf("read %s failed err is %v", root, err)
+	//	return
+	//}
+	//
+	//for _, file := range files {
+	//	if file.IsDir() && strings.HasPrefix(file.Name(), ClosdIdPrefix) {
+	//		path := filepath.Join(root, file.Name(), "schemata")
+	//		if _, err := os.Stat(path); err == nil {
+	//			reader, err := os.Open(path)
+	//			if err != nil {
+	//				klog.Errorf("open resctrl file path fail, %v", err)
+	//			}
+	//			content, err := io.ReadAll(reader)
+	//			if err != nil {
+	//				klog.Errorf("read resctrl file path fail, %v", err)
+	//				continue
+	//			}
+	//			schemata := string(content)
+	//			ids, _ := sysutil.CacheIdsCacheFunc()
+	//			schemataRaw := sysutil.NewResctrlSchemataRaw(ids).WithL3Num(len(ids))
+	//			err = schemataRaw.ParseResctrlSchemata(schemata, -1)
+	//			if err != nil {
+	//				klog.Errorf("failed to parse %v", err)
+	//			}
+	//			podid := strings.TrimPrefix(file.Name(), ClosdIdPrefix)
+	//			R.l.Lock()
+	//			R.Apps[podid] = App{
+	//				Resctrl: schemataRaw,
+	//				Closid:  file.Name(),
+	//			}
+	//			R.l.Unlock()
+	//		}
+	//	}
+	//}
 }
 
 func (R *RDTEngine) RegisterApp(podid, annotation string, updater ProtocolUpdater) error {

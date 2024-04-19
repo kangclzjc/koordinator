@@ -18,7 +18,9 @@ package resctrl
 
 import (
 	"fmt"
+	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/reconciler"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/runtimehooks/rule"
+	rmconfig "github.com/koordinator-sh/koordinator/pkg/runtimeproxy/config"
 	"os"
 	"strings"
 
@@ -32,7 +34,6 @@ import (
 	util "github.com/koordinator-sh/koordinator/pkg/koordlet/util/resctrl"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
 	sysutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
-	rmconfig "github.com/koordinator-sh/koordinator/pkg/runtimeproxy/config"
 )
 
 const (
@@ -143,11 +144,6 @@ func RemoveResctrlUpdaterFunc(u util.ProtocolUpdater) error {
 	return nil
 }
 
-func UpdateResctrlUpdaterFunc(hooksProtocol protocol.HooksProtocol) error {
-	return nil
-}
-
-// TODO:@Bowen choose parser there or in engine, should we init with some parameters?
 type plugin struct {
 	rule           *Rule
 	engine         util.ResctrlEngine
@@ -170,31 +166,6 @@ func newPlugin() *plugin {
 		rule: newRule(),
 	}
 }
-
-//func (p *plugin) init(apps map[string]util.App) {
-//	podsMeta := p.statesInformer.GetAllPods()
-//	currentPods := make(map[string]*corev1.Pod)
-//	for _, podMeta := range podsMeta {
-//		pod := podMeta.Pod
-//		if _, ok := podMeta.Pod.Annotations[apiext.AnnotationResctrl]; ok {
-//			group := string(podMeta.Pod.UID)
-//			currentPods[group] = pod
-//		}
-//	}
-//
-//	for k, v := range apps {
-//		if _, ok := currentPods[k]; !ok {
-//			if err := os.Remove(system.GetResctrlGroupRootDirPath(v.Closid)); err != nil {
-//				klog.Errorf("cannot remove ctrl group, err: %w", err)
-//				if os.IsNotExist(err) {
-//					p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix))
-//				}
-//			} else {
-//				p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix))
-//			}
-//		}
-//	}
-//}
 
 func (p *plugin) Register(op hooks.Options) {
 	// skip if host not support resctrl
@@ -221,16 +192,16 @@ func (p *plugin) Register(op hooks.Options) {
 	p.statesInformer = op.StatesInformer
 
 	rule.Register(ruleNameForAllPods, description,
+		rule.WithParseFunc(statesinformer.RegisterTypeAllPods, p.parseRuleForAllPods),
 		rule.WithUpdateCallback(p.ruleUpdateCbForAllPods))
 	hooks.Register(rmconfig.PreRunPodSandbox, name, description+" (pod)", p.SetPodResctrlResources)
 	hooks.Register(rmconfig.PreCreateContainer, name, description+" (pod)", p.SetContainerResctrlResources)
 	hooks.Register(rmconfig.PreRemoveRunPodSandbox, name, description+" (pod)", p.RemovePodResctrlResources)
-	/*
-		reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlSchemata, description+" (pod resctrl schema)", p.SetPodResctrlResources, reconciler.NoneFilter())
-		reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlRoot, description+" (pod resctrl schema)", p.RemovePodResctrlResources, reconciler.NoneFilter())
-		reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlTasks, description+" (pod resctrl tasks)", p.UpdatePodTaskIds, reconciler.NoneFilter())
-		reconciler.RegisterCgroupReconciler4AllPods(reconciler.AllPodsLevel, system.ResctrlRoot, description+" (pod resctl schema)", p.RemoveUnusedResctrlPath, reconciler.PodAnnotationResctrlFilter(), "resctrl")
-	*/
+
+	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlSchemata, description+" (pod resctrl schema)", p.SetPodResctrlResources, reconciler.NoneFilter())
+	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlTasks, description+" (pod resctrl tasks)", p.UpdatePodTaskIds, reconciler.NoneFilter())
+	reconciler.RegisterCgroupReconciler4AllPods(reconciler.AllPodsLevel, system.ResctrlRoot, description+" (pod resctl schema)", p.RemoveUnusedResctrlPath, reconciler.PodAnnotationResctrlFilter(), "resctrl")
+
 }
 
 func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
@@ -240,36 +211,11 @@ func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
 	}
 
 	if v, ok := podCtx.Request.Annotations[apiext.AnnotationResctrl]; ok {
-		resctrlInfo := &protocol.Resctrl{
-			NewTaskIds: make([]int32, 0),
-		}
 		updater := NewCreateResctrlUpdater(proto)
 		err := p.engine.RegisterApp(podCtx.Request.PodMeta.UID, v, updater)
 		if err != nil {
 			return err
 		}
-
-		app, err := p.engine.GetApp(podCtx.Request.PodMeta.UID)
-		if err != nil {
-			return err
-		}
-		items := []string{}
-		for _, item := range []struct {
-			validFunc func() (bool, string)
-			value     func() string
-		}{
-			{validFunc: app.Resctrl.ValidateL3, value: app.Resctrl.L3String},
-			{validFunc: app.Resctrl.ValidateMB, value: app.Resctrl.MBString},
-		} {
-			if valid, _ := item.validFunc(); valid {
-				items = append(items, item.value())
-			}
-		}
-		schemataStr := strings.Join(items, "")
-		resctrlInfo.Schemata = schemataStr
-		resctrlInfo.Closid = app.Closid
-		klog.Infof("podCtx.Response ------- %v", *podCtx.Response.Resources.Resctrl)
-		//podCtx.Response.Resources.Resctrl = resctrlInfo
 	}
 
 	return nil
@@ -351,23 +297,15 @@ func (p *plugin) SetContainerResctrlResources(proto protocol.HooksProtocol) erro
 }
 
 func (p *plugin) RemovePodResctrlResources(proto protocol.HooksProtocol) error {
-	klog.Info("------RemovePodResctrl")
+
 	podCtx, ok := proto.(*protocol.PodContext)
 	if !ok {
 		return fmt.Errorf("pod protocol is nil for plugin %v", name)
 	}
 
 	if _, ok := podCtx.Request.Annotations[apiext.AnnotationResctrl]; ok {
-		resctrlInfo := &protocol.Resctrl{
-			NewTaskIds: make([]int32, 0),
-		}
-
-		resctrlInfo.Closid = util.ClosdIdPrefix + podCtx.Request.PodMeta.UID
 		updater := NewRemoveResctrlUpdater(proto)
-
-		//podCtx.Response.Resources.Resctrl = resctrlInfo
 		p.engine.UnRegisterApp(podCtx.Request.PodMeta.UID, updater)
-		klog.Infof("podCtx.Response ------- %v", *podCtx.Response.Resources.Resctrl)
 	}
 	return nil
 }

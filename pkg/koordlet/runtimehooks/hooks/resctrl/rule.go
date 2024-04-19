@@ -20,13 +20,16 @@ func newRule() *Rule {
 	return &Rule{}
 }
 
+func (p *plugin) parseRuleForAllPods(allPods interface{}) (bool, error) {
+	return true, nil
+}
+
 func (p *plugin) ruleUpdateCbForAllPods(target *statesinformer.CallbackTarget) error {
 	if target == nil {
 		klog.Warningf("callback target is nil")
 		return nil
 	}
 
-	// NOTE: if the ratio becomes bigger, scale top down, otherwise, scale bottom up
 	if p.rule == nil {
 		klog.V(5).Infof("hook plugin rule is nil, nothing to do for plugin %v", ruleNameForAllPods)
 		return nil

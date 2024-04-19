@@ -2,8 +2,9 @@ package util
 
 import (
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/metricsadvisor/framework"
+	sysutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
 	gocache "github.com/patrickmn/go-cache"
-	"io/ioutil"
+	"io"
 	"k8s.io/klog/v2"
 	"os"
 	"path/filepath"
@@ -34,8 +35,7 @@ type ControlGroup struct {
 }
 
 type ControlGroupManager struct {
-	rdtcgs *gocache.Cache
-	//rdtcgs            map[string]*ControlGroup
+	rdtcgs            *gocache.Cache
 	reconcileInterval int64
 	CreateUpdater     Updater
 	SchemataUpdater   SchemataUpdater
@@ -53,30 +53,30 @@ func NewControlGroupManager(createUpdater Updater, schemataUpdater SchemataUpdat
 }
 
 func (c *ControlGroupManager) Init() {
-	// initialize based on app information and ctrl group status
-	// Load all ctrl groups and
-	files, err := os.ReadDir(ResctrlPath)
+	c.Lock()
+	defer c.Unlock()
+	// get resctrl filesystem root
+	root := sysutil.GetResctrlSubsystemDirPath()
+	files, err := os.ReadDir(root)
 	if err != nil {
-		klog.Errorf("read %s failed err is %v", ResctrlPath, err)
+		klog.Errorf("read %s failed err is %v", root, err)
 		return
 	}
 	for _, file := range files {
 		// rebuild c.rdtcgs
 		if file.IsDir() && strings.HasPrefix(file.Name(), ClosdIdPrefix) {
-			path := filepath.Join(ResctrlPath, file.Name(), "schemata")
+			path := filepath.Join(root, file.Name(), "schemata")
 			if _, err := os.Stat(path); err == nil {
-				content, err := ioutil.ReadFile(path)
+				reader, err := os.Open(path)
+				if err != nil {
+					klog.Errorf("open resctrl file path fail, %v", err)
+				}
+				content, err := io.ReadAll(reader)
 				if err != nil {
 					klog.Errorf("read resctrl file path fail, %v", err)
 					return
 				}
 				schemata := string(content)
-				//ids, _ := sysutil.CacheIdsCacheFunc()
-				//schemataRaw := sysutil.NewResctrlSchemataRaw(ids).WithL3Num(len(ids))
-				//err = schemataRaw.ParseResctrlSchemata(schemata, -1)
-				//if err != nil {
-				//	klog.Errorf("failed to parse %v", err)
-				//}
 				podid := strings.TrimPrefix(file.Name(), ClosdIdPrefix)
 				c.rdtcgs.Set(podid, &ControlGroup{
 					Appid:    podid,
@@ -151,10 +151,13 @@ func (c *ControlGroupManager) RemovePod(podid string, fromNRI bool, removeUpdate
 	p, ok := c.rdtcgs.Get(podid)
 	if !ok {
 		pod := &ControlGroup{podid, "", "", Remove}
-		err := removeUpdater.Update()
-		if err != nil {
-			klog.Errorf("remove updater fail %v", err)
+		if removeUpdater != nil {
+			err := removeUpdater.Update()
+			if err != nil {
+				klog.Errorf("remove updater fail %v", err)
+			}
 		}
+
 		c.rdtcgs.Set(podid, pod, gocache.DefaultExpiration)
 		return
 	}
