@@ -50,12 +50,12 @@ func (p *plugin) ruleUpdateCbForAllPods(target *statesinformer.CallbackTarget) e
 	for k, v := range apps {
 		if _, ok := currentPods[k]; !ok {
 			if err := os.Remove(system.GetResctrlGroupRootDirPath(v.Closid)); err != nil {
-				klog.Errorf("cannot remove ctrl group, err: %w", err)
+				klog.Errorf("cannot remove ctrl group, err: %v", err)
 				if os.IsNotExist(err) {
-					p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix), nil)
+					p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix), false, nil)
 				}
 			} else {
-				p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix), nil)
+				p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix), false, nil)
 			}
 		}
 	}

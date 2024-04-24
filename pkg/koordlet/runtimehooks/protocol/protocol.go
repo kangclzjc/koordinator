@@ -167,8 +167,16 @@ func injectMemoryLimit(cgroupParent string, memoryLimit int64, a *audit.EventHel
 	return updater, nil
 }
 
-func injectResctrl(closid string, schemata string, helper *audit.EventHelper, executor resourceexecutor.ResourceUpdateExecutor) (resourceexecutor.ResourceUpdater, error) {
-	updater, err := resourceexecutor.NewResctrlSchemataResource(closid, schemata)
+func CreateCatGroup(closid string, a *audit.EventHelper, e resourceexecutor.ResourceUpdateExecutor) (resourceexecutor.ResourceUpdater, error) {
+	updater, err := resourceexecutor.NewCatGroupResource(closid, a)
+	if err != nil {
+		return nil, err
+	}
+	return updater, nil
+}
+
+func injectResctrl(closid string, schemata string, e *audit.EventHelper, executor resourceexecutor.ResourceUpdateExecutor) (resourceexecutor.ResourceUpdater, error) {
+	updater, err := resourceexecutor.NewResctrlSchemataResource(closid, schemata, e)
 	if err != nil {
 		return nil, err
 	}

@@ -29,14 +29,15 @@ const ClosdIdPrefix = "koordlet-"
 type App struct {
 	Resctrl *sysutil.ResctrlSchemataRaw
 	// Hooks   Hook
-	Closid string
+	Closid     string
+	Annotation string
 }
 
 type ResctrlEngine interface {
 	Rebuild() // rebuild the current control group
-	RegisterApp(podid, annotation string, updater ProtocolUpdater) error
-	UnRegisterApp(podid string, updater ProtocolUpdater) error
-	GetApp(podid string) (App, error)
+	RegisterApp(podid, annotation string, fromNRI bool, updater ProtocolUpdater) error
+	UnRegisterApp(podid string, fromNRI bool, updater ProtocolUpdater) error
+	GetApp(podid string) (App, bool)
 	GetApps() map[string]App
 }
 
@@ -73,10 +74,10 @@ type RDTEngine struct {
 	CBM        uint
 }
 
-func (R *RDTEngine) UnRegisterApp(podid string, updater ProtocolUpdater) error {
+func (R *RDTEngine) UnRegisterApp(podid string, fromNRI bool, updater ProtocolUpdater) error {
 	R.l.Lock()
 	defer R.l.Unlock()
-	R.Cgm.RemovePod(podid, true, updater)
+	R.Cgm.RemovePod(podid, fromNRI, updater)
 
 	if _, ok := R.Apps[podid]; !ok {
 		return fmt.Errorf("pod %s not registered", podid)
@@ -113,7 +114,7 @@ func (R *RDTEngine) Rebuild() {
 		}
 		R.Apps[podid] = App{
 			Resctrl: schemataRaw,
-			Closid:  podid,
+			Closid:  v.Groupid,
 		}
 	}
 	// get resctrl filesystem root
@@ -157,10 +158,7 @@ func (R *RDTEngine) Rebuild() {
 	//}
 }
 
-func (R *RDTEngine) RegisterApp(podid, annotation string, updater ProtocolUpdater) error {
-	if _, ok := R.Apps[podid]; ok {
-		return fmt.Errorf("pod %s already registered", podid)
-	}
+func (R *RDTEngine) RegisterApp(podid, annotation string, fromNRI bool, updater ProtocolUpdater) error {
 	// Parse the JSON value into the BlockIO struct
 	var res apiext.ResctrlConfig
 	err := json.Unmarshal([]byte(annotation), &res)
@@ -171,8 +169,9 @@ func (R *RDTEngine) RegisterApp(podid, annotation string, updater ProtocolUpdate
 
 	schemata := ParseSchemata(res, R.CBM)
 	app := App{
-		Resctrl: schemata,
-		Closid:  ClosdIdPrefix + podid,
+		Resctrl:    schemata,
+		Closid:     ClosdIdPrefix + podid,
+		Annotation: annotation,
 	}
 
 	items := []string{}
@@ -193,7 +192,7 @@ func (R *RDTEngine) RegisterApp(podid, annotation string, updater ProtocolUpdate
 		updater.SetValue(schemataStr)
 		updater.Update()
 	}
-	R.Cgm.AddPod(podid, schemataStr, true, updater, nil)
+	R.Cgm.AddPod(podid, schemataStr, fromNRI, updater, nil)
 
 	R.l.Lock()
 	defer R.l.Unlock()
@@ -264,14 +263,14 @@ func ParseSchemata(config apiext.ResctrlConfig, cbm uint) *sysutil.ResctrlSchema
 	return schemataRaw
 }
 
-func (R *RDTEngine) GetApp(id string) (App, error) {
+func (R *RDTEngine) GetApp(id string) (App, bool) {
 	R.l.RLock()
 	defer R.l.RUnlock()
 
 	if v, ok := R.Apps[id]; ok {
-		return v, nil
+		return v, true
 	} else {
-		return App{}, fmt.Errorf("no App %s", id)
+		return App{}, false
 	}
 }
 

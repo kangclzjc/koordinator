@@ -595,6 +595,8 @@ func InitCatGroupIfNotExist(group string) error {
 		return nil
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("check dir %v for group %s but got unexpected err: %v", path, group, err)
+	} else if os.IsExist(err) {
+		return nil
 	}
 	err = os.Mkdir(path, 0755)
 	if err != nil {

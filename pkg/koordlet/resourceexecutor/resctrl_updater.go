@@ -55,7 +55,20 @@ func (r *ResctrlSchemataResourceUpdater) Clone() ResourceUpdater {
 	}
 }
 
-func NewResctrlSchemataResource(group, schemata string) (ResourceUpdater, error) {
+//
+//func NewCatCgroup(group string) (ResourceUpdater, error) {
+//	return &ResctrlSchemataResourceUpdater{
+//		DefaultResourceUpdater: DefaultResourceUpdater{
+//			key:        "",
+//			file:       group,
+//			value:      "",
+//			updateFunc: UpdateResctrlSchemataFunc,
+//		},
+//		schemataRaw: schemataRaw,
+//	}, err
+//}
+
+func NewResctrlSchemataResource(group, schemata string, e *audit.EventHelper) (ResourceUpdater, error) {
 	err := sysutil.InitCatGroupIfNotExist(group)
 	if err != nil {
 		return nil, err
@@ -92,13 +105,30 @@ func NewResctrlSchemataResource(group, schemata string) (ResourceUpdater, error)
 		schemataFile, schemataKey, schemataStr, schemata)
 	return &ResctrlSchemataResourceUpdater{
 		DefaultResourceUpdater: DefaultResourceUpdater{
-			key:        schemataKey,
-			file:       schemataFile,
-			value:      schemataStr,
-			updateFunc: UpdateResctrlSchemataFunc,
+			key:         schemataKey,
+			file:        schemataFile,
+			value:       schemataStr,
+			updateFunc:  UpdateResctrlSchemataFunc,
+			eventHelper: e,
 		},
 		schemataRaw: schemataRaw,
 	}, err
+}
+
+func NewCatGroupResource(group string, e *audit.EventHelper) (ResourceUpdater, error) {
+	if group == "" {
+		return nil, fmt.Errorf("group is nil")
+	}
+	schemataFile := sysutil.ResctrlSchemata.Path(group)
+
+	klog.V(6).Infof("generate new cat group resource, file %s", schemataFile)
+	return &DefaultResourceUpdater{
+		key:         group,
+		file:        schemataFile,
+		value:       "",
+		updateFunc:  InitCatGroupFunc,
+		eventHelper: e,
+	}, nil
 }
 
 func NewResctrlL3SchemataResource(group, schemataDelta string, l3Num int) ResourceUpdater {
@@ -160,6 +190,23 @@ func CalculateResctrlL3TasksResource(group string, taskIds []int32) (ResourceUpd
 	}
 	eventHelper := audit.V(5).Reason("ApplyCatL3GroupTasks").Message("update Resctrl L3Tasks for group : %v to : %v", group, builder.String())
 	return NewCommonDefaultUpdaterWithUpdateFunc(tasksPath, tasksPath, builder.String(), UpdateResctrlTasksFunc, eventHelper)
+}
+
+func InitCatGroupFunc(u ResourceUpdater) error {
+	r, ok := u.(*DefaultResourceUpdater)
+	if !ok {
+		return fmt.Errorf("not a ResctrlSchemataResourceUpdater")
+	}
+
+	schemataFile := r.Path()
+
+	err := sysutil.InitCatGroupIfNotExist(schemataFile)
+	if err != nil {
+		return err
+	}
+	_ = audit.V(3).Reason(CreateCATGroup).Message("Create %v to %v", u.Key(), u.Value()).Do()
+
+	return nil
 }
 
 func UpdateResctrlSchemataFunc(u ResourceUpdater) error {

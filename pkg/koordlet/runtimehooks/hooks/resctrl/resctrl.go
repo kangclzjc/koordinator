@@ -63,48 +63,36 @@ func (u DefaultResctrlProtocolUpdater) Value() string {
 	return u.schemata
 }
 
-func (u DefaultResctrlProtocolUpdater) Update() error {
-	return nil
+func (r *DefaultResctrlProtocolUpdater) SetKey(key string) {
+	r.group = key
+}
+
+func (r *DefaultResctrlProtocolUpdater) SetValue(val string) {
+	r.schemata = val
+}
+
+func (u *DefaultResctrlProtocolUpdater) Update() error {
+	return u.updateFunc(u)
 }
 
 type Updater func(u DefaultResctrlProtocolUpdater) error
 
-type CreateResctrlProtocolUpdater struct {
-	DefaultResctrlProtocolUpdater
-}
-
-func (r *CreateResctrlProtocolUpdater) SetKey(key string) {
-	r.group = key
-}
-
-func (r *CreateResctrlProtocolUpdater) SetValue(val string) {
-	r.schemata = val
-}
-
-func (r *CreateResctrlProtocolUpdater) Update() error {
-	return r.updateFunc(r)
-}
-
 func NewCreateResctrlUpdater(hooksProtocol protocol.HooksProtocol) util.ProtocolUpdater {
-	return &CreateResctrlProtocolUpdater{
-		DefaultResctrlProtocolUpdater: DefaultResctrlProtocolUpdater{
-			hooksProtocol: hooksProtocol,
-			updateFunc:    CreateResctrlUpdaterFunc,
-		},
+	return &DefaultResctrlProtocolUpdater{
+		hooksProtocol: hooksProtocol,
+		updateFunc:    CreateResctrlUpdaterFunc,
 	}
 }
 
 func NewRemoveResctrlUpdater(hooksProtocol protocol.HooksProtocol) util.ProtocolUpdater {
-	return &CreateResctrlProtocolUpdater{
-		DefaultResctrlProtocolUpdater: DefaultResctrlProtocolUpdater{
-			hooksProtocol: hooksProtocol,
-			updateFunc:    RemoveResctrlUpdaterFunc,
-		},
+	return &DefaultResctrlProtocolUpdater{
+		hooksProtocol: hooksProtocol,
+		updateFunc:    RemoveResctrlUpdaterFunc,
 	}
 }
 
 func CreateResctrlUpdaterFunc(u util.ProtocolUpdater) error {
-	r, ok := u.(*CreateResctrlProtocolUpdater)
+	r, ok := u.(*DefaultResctrlProtocolUpdater)
 	if !ok {
 		return fmt.Errorf("not a ResctrlSchemataResourceUpdater")
 	}
@@ -128,7 +116,7 @@ func CreateResctrlUpdaterFunc(u util.ProtocolUpdater) error {
 }
 
 func RemoveResctrlUpdaterFunc(u util.ProtocolUpdater) error {
-	r, ok := u.(*CreateResctrlProtocolUpdater)
+	r, ok := u.(*DefaultResctrlProtocolUpdater)
 	if !ok {
 		return fmt.Errorf("not a ResctrlSchemataResourceUpdater")
 	}
@@ -149,7 +137,6 @@ type plugin struct {
 	engine         util.ResctrlEngine
 	executor       resourceexecutor.ResourceUpdateExecutor
 	statesInformer statesinformer.StatesInformer
-	app            map[string]util.App
 }
 
 var singleton *plugin
@@ -194,25 +181,37 @@ func (p *plugin) Register(op hooks.Options) {
 	rule.Register(ruleNameForAllPods, description,
 		rule.WithParseFunc(statesinformer.RegisterTypeAllPods, p.parseRuleForAllPods),
 		rule.WithUpdateCallback(p.ruleUpdateCbForAllPods))
-	hooks.Register(rmconfig.PreRunPodSandbox, name, description+" (pod)", p.SetPodResctrlResources)
+	hooks.Register(rmconfig.PreRunPodSandbox, name, description+" (pod)", p.SetPodResctrlResourcesForHooks)
 	hooks.Register(rmconfig.PreCreateContainer, name, description+" (pod)", p.SetContainerResctrlResources)
 	hooks.Register(rmconfig.PreRemoveRunPodSandbox, name, description+" (pod)", p.RemovePodResctrlResources)
 
-	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlSchemata, description+" (pod resctrl schema)", p.SetPodResctrlResources, reconciler.NoneFilter())
+	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlSchemata, description+" (pod resctrl schema)", p.SetPodResctrlResourcesForReconciler, reconciler.NoneFilter())
 	reconciler.RegisterCgroupReconciler(reconciler.PodLevel, system.ResctrlTasks, description+" (pod resctrl tasks)", p.UpdatePodTaskIds, reconciler.NoneFilter())
 	reconciler.RegisterCgroupReconciler4AllPods(reconciler.AllPodsLevel, system.ResctrlRoot, description+" (pod resctl schema)", p.RemoveUnusedResctrlPath, reconciler.PodAnnotationResctrlFilter(), "resctrl")
 
 }
 
-func (p *plugin) SetPodResctrlResources(proto protocol.HooksProtocol) error {
+func (p *plugin) SetPodResctrlResourcesForHooks(proto protocol.HooksProtocol) error {
+	return p.setPodResctrlResources(proto, true)
+}
+
+func (p *plugin) SetPodResctrlResourcesForReconciler(proto protocol.HooksProtocol) error {
+	return p.setPodResctrlResources(proto, false)
+}
+
+func (p *plugin) setPodResctrlResources(proto protocol.HooksProtocol, fromNRI bool) error {
 	podCtx, ok := proto.(*protocol.PodContext)
 	if !ok {
 		return fmt.Errorf("pod protocol is nil for plugin %v", name)
 	}
 
 	if v, ok := podCtx.Request.Annotations[apiext.AnnotationResctrl]; ok {
+		app, ok := p.engine.GetApp(podCtx.Request.PodMeta.UID)
+		if ok && app.Annotation == v {
+			return nil
+		}
 		updater := NewCreateResctrlUpdater(proto)
-		err := p.engine.RegisterApp(podCtx.Request.PodMeta.UID, v, updater)
+		err := p.engine.RegisterApp(podCtx.Request.PodMeta.UID, v, fromNRI, updater)
 		if err != nil {
 			return err
 		}
@@ -242,10 +241,10 @@ func (p *plugin) RemoveUnusedResctrlPath(protos []protocol.HooksProtocol) error 
 			if err := os.Remove(system.GetResctrlGroupRootDirPath(v.Closid)); err != nil {
 				klog.Errorf("cannot remove ctrl group, err: %v", err)
 				if os.IsNotExist(err) {
-					p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix), nil)
+					p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix), false, nil)
 				}
 			} else {
-				p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix), nil)
+				p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix), false, nil)
 			}
 		}
 	}
@@ -297,7 +296,6 @@ func (p *plugin) SetContainerResctrlResources(proto protocol.HooksProtocol) erro
 }
 
 func (p *plugin) RemovePodResctrlResources(proto protocol.HooksProtocol) error {
-
 	podCtx, ok := proto.(*protocol.PodContext)
 	if !ok {
 		return fmt.Errorf("pod protocol is nil for plugin %v", name)
@@ -305,7 +303,7 @@ func (p *plugin) RemovePodResctrlResources(proto protocol.HooksProtocol) error {
 
 	if _, ok := podCtx.Request.Annotations[apiext.AnnotationResctrl]; ok {
 		updater := NewRemoveResctrlUpdater(proto)
-		p.engine.UnRegisterApp(podCtx.Request.PodMeta.UID, updater)
+		p.engine.UnRegisterApp(podCtx.Request.PodMeta.UID, true, updater)
 	}
 	return nil
 }
