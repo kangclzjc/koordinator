@@ -4,10 +4,8 @@ import (
 	apiext "github.com/koordinator-sh/koordinator/apis/extension"
 	"github.com/koordinator-sh/koordinator/pkg/koordlet/statesinformer"
 	util "github.com/koordinator-sh/koordinator/pkg/koordlet/util/resctrl"
-	"github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
-	"os"
 	"strings"
 	"sync"
 )
@@ -35,7 +33,6 @@ func (p *plugin) ruleUpdateCbForAllPods(target *statesinformer.CallbackTarget) e
 		return nil
 	}
 
-	p.engine.Rebuild()
 	apps := p.engine.GetApps()
 
 	currentPods := make(map[string]*corev1.Pod)
@@ -49,14 +46,8 @@ func (p *plugin) ruleUpdateCbForAllPods(target *statesinformer.CallbackTarget) e
 
 	for k, v := range apps {
 		if _, ok := currentPods[k]; !ok {
-			if err := os.Remove(system.GetResctrlGroupRootDirPath(v.Closid)); err != nil {
-				klog.Errorf("cannot remove ctrl group, err: %v", err)
-				if os.IsNotExist(err) {
-					p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix), false, nil)
-				}
-			} else {
-				p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix), false, nil)
-			}
+			updater := NewRemoveResctrlUpdater(v.Closid)
+			p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix), false, updater)
 		}
 	}
 	return nil

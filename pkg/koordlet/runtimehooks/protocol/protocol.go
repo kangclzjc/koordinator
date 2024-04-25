@@ -167,7 +167,7 @@ func injectMemoryLimit(cgroupParent string, memoryLimit int64, a *audit.EventHel
 	return updater, nil
 }
 
-func CreateCatGroup(closid string, a *audit.EventHelper, e resourceexecutor.ResourceUpdateExecutor) (resourceexecutor.ResourceUpdater, error) {
+func createCatGroup(closid string, a *audit.EventHelper, e resourceexecutor.ResourceUpdateExecutor) (resourceexecutor.ResourceUpdater, error) {
 	updater, err := resourceexecutor.NewCatGroupResource(closid, a)
 	if err != nil {
 		return nil, err

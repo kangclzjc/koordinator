@@ -15,7 +15,7 @@ import (
 	sysutil "github.com/koordinator-sh/koordinator/pkg/koordlet/util/system"
 )
 
-type ProtocolUpdater interface {
+type ResctrlUpdater interface {
 	Name() string
 	Key() string
 	Value() string
@@ -34,9 +34,9 @@ type App struct {
 }
 
 type ResctrlEngine interface {
-	Rebuild() // rebuild the current control group
-	RegisterApp(podid, annotation string, fromNRI bool, updater ProtocolUpdater) error
-	UnRegisterApp(podid string, fromNRI bool, updater ProtocolUpdater) error
+	Rebuild()
+	RegisterApp(podid, annotation string, fromNRI bool, updater ResctrlUpdater) error
+	UnRegisterApp(podid string, fromNRI bool, updater ResctrlUpdater) error
 	GetApp(podid string) (App, bool)
 	GetApps() map[string]App
 }
@@ -74,15 +74,18 @@ type RDTEngine struct {
 	CBM        uint
 }
 
-func (R *RDTEngine) UnRegisterApp(podid string, fromNRI bool, updater ProtocolUpdater) error {
+func (R *RDTEngine) UnRegisterApp(podid string, fromNRI bool, updater ResctrlUpdater) error {
 	R.l.Lock()
 	defer R.l.Unlock()
-	R.Cgm.RemovePod(podid, fromNRI, updater)
 
 	if _, ok := R.Apps[podid]; !ok {
 		return fmt.Errorf("pod %s not registered", podid)
 	}
-	delete(R.Apps, podid)
+	removed := R.Cgm.RemovePod(podid, fromNRI, updater)
+	if removed {
+		delete(R.Apps, podid)
+	}
+
 	return nil
 }
 
@@ -117,49 +120,9 @@ func (R *RDTEngine) Rebuild() {
 			Closid:  v.Groupid,
 		}
 	}
-	// get resctrl filesystem root
-	//root := sysutil.GetResctrlSubsystemDirPath()
-	//
-	//files, err := os.ReadDir(root)
-	//if err != nil {
-	//	klog.Errorf("read %s failed err is %v", root, err)
-	//	return
-	//}
-	//
-	//for _, file := range files {
-	//	if file.IsDir() && strings.HasPrefix(file.Name(), ClosdIdPrefix) {
-	//		path := filepath.Join(root, file.Name(), "schemata")
-	//		if _, err := os.Stat(path); err == nil {
-	//			reader, err := os.Open(path)
-	//			if err != nil {
-	//				klog.Errorf("open resctrl file path fail, %v", err)
-	//			}
-	//			content, err := io.ReadAll(reader)
-	//			if err != nil {
-	//				klog.Errorf("read resctrl file path fail, %v", err)
-	//				continue
-	//			}
-	//			schemata := string(content)
-	//			ids, _ := sysutil.CacheIdsCacheFunc()
-	//			schemataRaw := sysutil.NewResctrlSchemataRaw(ids).WithL3Num(len(ids))
-	//			err = schemataRaw.ParseResctrlSchemata(schemata, -1)
-	//			if err != nil {
-	//				klog.Errorf("failed to parse %v", err)
-	//			}
-	//			podid := strings.TrimPrefix(file.Name(), ClosdIdPrefix)
-	//			R.l.Lock()
-	//			R.Apps[podid] = App{
-	//				Resctrl: schemataRaw,
-	//				Closid:  file.Name(),
-	//			}
-	//			R.l.Unlock()
-	//		}
-	//	}
-	//}
 }
 
-func (R *RDTEngine) RegisterApp(podid, annotation string, fromNRI bool, updater ProtocolUpdater) error {
-	// Parse the JSON value into the BlockIO struct
+func (R *RDTEngine) RegisterApp(podid, annotation string, fromNRI bool, updater ResctrlUpdater) error {
 	var res apiext.ResctrlConfig
 	err := json.Unmarshal([]byte(annotation), &res)
 	if err != nil {

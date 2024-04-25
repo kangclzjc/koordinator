@@ -42,7 +42,7 @@ const (
 	ruleNameForAllPods = name + " (AllPods)"
 )
 
-type UpdateFunc func(resource util.ProtocolUpdater) error
+type UpdateFunc func(resource util.ResctrlUpdater) error
 
 type DefaultResctrlProtocolUpdater struct {
 	hooksProtocol protocol.HooksProtocol
@@ -77,21 +77,28 @@ func (u *DefaultResctrlProtocolUpdater) Update() error {
 
 type Updater func(u DefaultResctrlProtocolUpdater) error
 
-func NewCreateResctrlUpdater(hooksProtocol protocol.HooksProtocol) util.ProtocolUpdater {
+func NewCreateResctrlProtocolUpdater(hooksProtocol protocol.HooksProtocol) util.ResctrlUpdater {
 	return &DefaultResctrlProtocolUpdater{
 		hooksProtocol: hooksProtocol,
-		updateFunc:    CreateResctrlUpdaterFunc,
+		updateFunc:    CreateResctrlProtocolUpdaterFunc,
 	}
 }
 
-func NewRemoveResctrlUpdater(hooksProtocol protocol.HooksProtocol) util.ProtocolUpdater {
+func NewRemoveResctrlProtocolUpdater(hooksProtocol protocol.HooksProtocol) util.ResctrlUpdater {
 	return &DefaultResctrlProtocolUpdater{
 		hooksProtocol: hooksProtocol,
-		updateFunc:    RemoveResctrlUpdaterFunc,
+		updateFunc:    RemoveResctrlProtocolUpdaterFunc,
 	}
 }
 
-func CreateResctrlUpdaterFunc(u util.ProtocolUpdater) error {
+func NewRemoveResctrlUpdater(group string) util.ResctrlUpdater {
+	return &DefaultResctrlProtocolUpdater{
+		group:      group,
+		updateFunc: RemoveResctrlUpdaterFunc,
+	}
+}
+
+func CreateResctrlProtocolUpdaterFunc(u util.ResctrlUpdater) error {
 	r, ok := u.(*DefaultResctrlProtocolUpdater)
 	if !ok {
 		return fmt.Errorf("not a ResctrlSchemataResourceUpdater")
@@ -115,7 +122,7 @@ func CreateResctrlUpdaterFunc(u util.ProtocolUpdater) error {
 	return nil
 }
 
-func RemoveResctrlUpdaterFunc(u util.ProtocolUpdater) error {
+func RemoveResctrlProtocolUpdaterFunc(u util.ResctrlUpdater) error {
 	r, ok := u.(*DefaultResctrlProtocolUpdater)
 	if !ok {
 		return fmt.Errorf("not a ResctrlSchemataResourceUpdater")
@@ -129,6 +136,19 @@ func RemoveResctrlUpdaterFunc(u util.ProtocolUpdater) error {
 	}
 	resctrlInfo.Closid = util.ClosdIdPrefix + podCtx.Request.PodMeta.UID
 	podCtx.Response.Resources.Resctrl = resctrlInfo
+	return nil
+}
+
+func RemoveResctrlUpdaterFunc(u util.ResctrlUpdater) error {
+	r, ok := u.(*DefaultResctrlProtocolUpdater)
+	if !ok {
+		return fmt.Errorf("not a ResctrlSchemataResourceUpdater")
+	}
+	if err := os.Remove(system.GetResctrlGroupRootDirPath(r.group)); err != nil {
+		return err
+	} else {
+		klog.V(5).Infof("successfully remove ctrl group %s", r.group)
+	}
 	return nil
 }
 
@@ -178,6 +198,7 @@ func (p *plugin) Register(op hooks.Options) {
 	p.executor = op.Executor
 	p.statesInformer = op.StatesInformer
 
+	p.engine.Rebuild()
 	rule.Register(ruleNameForAllPods, description,
 		rule.WithParseFunc(statesinformer.RegisterTypeAllPods, p.parseRuleForAllPods),
 		rule.WithUpdateCallback(p.ruleUpdateCbForAllPods))
@@ -210,7 +231,7 @@ func (p *plugin) setPodResctrlResources(proto protocol.HooksProtocol, fromNRI bo
 		if ok && app.Annotation == v {
 			return nil
 		}
-		updater := NewCreateResctrlUpdater(proto)
+		updater := NewCreateResctrlProtocolUpdater(proto)
 		err := p.engine.RegisterApp(podCtx.Request.PodMeta.UID, v, fromNRI, updater)
 		if err != nil {
 			return err
@@ -238,14 +259,8 @@ func (p *plugin) RemoveUnusedResctrlPath(protos []protocol.HooksProtocol) error 
 	apps := p.engine.GetApps()
 	for k, v := range apps {
 		if _, ok := currentPods[k]; !ok {
-			if err := os.Remove(system.GetResctrlGroupRootDirPath(v.Closid)); err != nil {
-				klog.Errorf("cannot remove ctrl group, err: %v", err)
-				if os.IsNotExist(err) {
-					p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix), false, nil)
-				}
-			} else {
-				p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix), false, nil)
-			}
+			updater := NewRemoveResctrlUpdater(v.Closid)
+			p.engine.UnRegisterApp(strings.TrimPrefix(v.Closid, util.ClosdIdPrefix), false, updater)
 		}
 	}
 	return nil
@@ -302,7 +317,7 @@ func (p *plugin) RemovePodResctrlResources(proto protocol.HooksProtocol) error {
 	}
 
 	if _, ok := podCtx.Request.Annotations[apiext.AnnotationResctrl]; ok {
-		updater := NewRemoveResctrlUpdater(proto)
+		updater := NewRemoveResctrlProtocolUpdater(proto)
 		p.engine.UnRegisterApp(podCtx.Request.PodMeta.UID, true, updater)
 	}
 	return nil

@@ -292,7 +292,17 @@ func (p *PodContext) injectForExt() {
 		eventHelper := audit.V(3).Pod(p.Request.PodMeta.Namespace, p.Request.PodMeta.Name).Reason("runtime-hooks").Message(
 			"set pod LLC/MB limit to %v", *p.Response.Resources.Resctrl)
 		if p.Response.Resources.Resctrl.Closid != "" || p.Response.Resources.Resctrl.Schemata != "" {
-			updater, err := injectResctrl(p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.Schemata, eventHelper, p.executor)
+			updater, err := createCatGroup(p.Response.Resources.Resctrl.Closid, eventHelper, p.executor)
+			if err != nil {
+				klog.Infof("create pod %v/%v cat group %v failed, error %v", p.Request.PodMeta.Namespace,
+					p.Request.PodMeta.Name, p.Response.Resources.Resctrl.Closid, err)
+			} else {
+				p.updaters = append(p.updaters, updater)
+				klog.V(5).Infof("create pod %v/%v cat group %v",
+					p.Request.PodMeta.Namespace, p.Request.PodMeta.Name, p.Response.Resources.Resctrl.Closid)
+			}
+
+			updater, err = injectResctrl(p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.Schemata, eventHelper, p.executor)
 			if err != nil {
 				klog.Infof("set pod %v/%v LLC/MB limit %v on cgroup parent %v failed, error %v", p.Request.PodMeta.Namespace,
 					p.Request.PodMeta.Name, p.Response.Resources.Resctrl.Closid, p.Response.Resources.Resctrl.Schemata, err)

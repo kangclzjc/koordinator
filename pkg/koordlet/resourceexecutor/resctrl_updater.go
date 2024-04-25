@@ -69,11 +69,6 @@ func (r *ResctrlSchemataResourceUpdater) Clone() ResourceUpdater {
 //}
 
 func NewResctrlSchemataResource(group, schemata string, e *audit.EventHelper) (ResourceUpdater, error) {
-	err := sysutil.InitCatGroupIfNotExist(group)
-	if err != nil {
-		return nil, err
-	}
-
 	if schemata == "" {
 		return nil, fmt.Errorf("schemata is nil")
 	}
@@ -84,7 +79,7 @@ func NewResctrlSchemataResource(group, schemata string, e *audit.EventHelper) (R
 	// to obtain cache ids to replace the current method.
 	ids, _ := sysutil.CacheIdsCacheFunc()
 	schemataRaw := sysutil.NewResctrlSchemataRaw(ids).WithL3Num(len(ids))
-	err = schemataRaw.ParseResctrlSchemata(schemata, -1)
+	err := schemataRaw.ParseResctrlSchemata(schemata, -1)
 	if err != nil {
 		klog.Errorf("failed to parse %v", err)
 	}
@@ -198,9 +193,7 @@ func InitCatGroupFunc(u ResourceUpdater) error {
 		return fmt.Errorf("not a ResctrlSchemataResourceUpdater")
 	}
 
-	schemataFile := r.Path()
-
-	err := sysutil.InitCatGroupIfNotExist(schemataFile)
+	err := sysutil.InitCatGroupIfNotExist(r.key)
 	if err != nil {
 		return err
 	}

@@ -86,12 +86,13 @@ func (c *ControlGroupManager) Init() {
 					Status:      Add,
 					CreatedTime: time.Now().UnixNano(),
 				}, -1)
+				klog.Infof("podid is %s, ctrl group is %v", podid, file.Name())
 			}
 		}
 	}
 }
 
-func (c *ControlGroupManager) AddPod(podid string, schemata string, fromNRI bool, createUpdater ProtocolUpdater, schemataUpdater ProtocolUpdater) {
+func (c *ControlGroupManager) AddPod(podid string, schemata string, fromNRI bool, createUpdater ResctrlUpdater, schemataUpdater ResctrlUpdater) {
 	c.Lock()
 	defer c.Unlock()
 	p, ok := c.rdtcgs.Get(podid)
@@ -145,7 +146,7 @@ func (c *ControlGroupManager) AddPod(podid string, schemata string, fromNRI bool
 	}
 }
 
-func (c *ControlGroupManager) RemovePod(podid string, fromNRI bool, removeUpdater ProtocolUpdater) {
+func (c *ControlGroupManager) RemovePod(podid string, fromNRI bool, removeUpdater ResctrlUpdater) bool {
 	c.Lock()
 	defer c.Unlock()
 
@@ -156,11 +157,12 @@ func (c *ControlGroupManager) RemovePod(podid string, fromNRI bool, removeUpdate
 			err := removeUpdater.Update()
 			if err != nil {
 				klog.Errorf("remove updater fail %v", err)
+				return false
 			}
 		}
 
 		c.rdtcgs.Set(podid, pod, gocache.DefaultExpiration)
-		return
+		return true
 	}
 	pod := p.(*ControlGroup)
 	if (fromNRI || time.Now().UnixNano()-pod.CreatedTime >= ExpirationTime*time.Second.Nanoseconds()) && pod.Status == Add {
@@ -169,9 +171,12 @@ func (c *ControlGroupManager) RemovePod(podid string, fromNRI bool, removeUpdate
 			err := removeUpdater.Update()
 			if err != nil {
 				klog.Errorf("remove updater fail %v", err)
+				return false
 			}
 		}
 
 		c.rdtcgs.Set(podid, pod, gocache.DefaultExpiration)
+		return true
 	}
+	return false
 }
