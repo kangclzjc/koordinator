@@ -29,12 +29,14 @@ import (
 type PodMeta struct {
 	Pod       *corev1.Pod
 	CgroupDir string
+	ContainerTaskIds map[string][]int32
 }
 
 func (in *PodMeta) DeepCopy() *PodMeta {
 	out := new(PodMeta)
 	out.Pod = in.Pod.DeepCopy()
 	out.CgroupDir = in.CgroupDir
+	out.ContainerTaskIds = in.ContainerTaskIds
 	return out
 }
 
