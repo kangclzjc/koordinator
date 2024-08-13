@@ -18,6 +18,7 @@ package protocol
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/containerd/nri/pkg/api"
 	corev1 "k8s.io/api/core/v1"
@@ -160,7 +161,14 @@ func (p *PodContext) RecordEvent(r record.EventRecorder, pod *corev1.Pod) {
 		events[event.EventType] = e
 	}
 
-	for eventType, event := range events {
+	eventTypes := make([]string, 0, len(events))
+	for eventType := range events {
+		eventTypes = append(eventTypes, eventType)
+	}
+	sort.Strings(eventTypes)
+
+	for _, eventType := range eventTypes {
+		event := events[eventType]
 		r.Eventf(pod, eventType, event.Reason, event.MsgFmt)
 	}
 }
